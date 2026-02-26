@@ -2,288 +2,204 @@
 //  LevelConfig.swift
 //  The Living Prompt Tree
 //
-//  Created by Chandramohan on 26/02/26.
+//  Hardcoded Climate Change curriculum data for all 5 stages.
 //
 
 import Foundation
 
-// MARK: - Domain Enum
-/// The professional domain from which a prompt example originates.
-enum Domain: String, Sendable, CaseIterable, Codable {
-    case healthcare
-    case finance
-    case customerService
-    case general
-}
+// MARK: - Stage Data
 
-// MARK: - PromptTechnique Enum
-/// The 5 core prompt-engineering techniques taught across levels.
-enum PromptTechnique: String, Sendable, CaseIterable, Codable {
-    /// "You are a senior cardiologist. Analyze the ECG report..."
-    case rolePrompting
-    /// "Generate a discharge summary including diagnosis, treatment, medications..."
-    case taskPrompting
-    /// "Given the patient's symptoms (listed below), suggest possible causes."
-    case contextPrompting
-    /// "Explain asthma management in exactly 5 bullet points."
-    case constraintPrompting
-    /// "Present results in a table with columns: Metric, Value, Risk Level."
-    case outputFormatting
-    /// "Help me debug this Python function. [API key removed]"
-    case privacySafety
-}
-
-// MARK: - PromptExample
-/// A single bad → good prompt transformation with explanation.
-struct PromptExample: Sendable, Identifiable {
-    let id = UUID()
-    /// The original, flawed prompt.
-    let badPrompt: String
-    /// The improved, well-engineered prompt.
-    let goodPrompt: String
-    /// Why the good version is better.
-    let explanation: String
-    /// The professional domain this example belongs to.
-    let domain: Domain
-    /// Which technique the improvement primarily demonstrates.
-    let techniqueUsed: PromptTechnique
-    /// Optional structural blocks for Level 2 (Structure).
-    let structureBlocks: [String]?
-}
-
-// MARK: - LevelData
-/// Complete configuration for a single level of the Living Prompt Tree.
-struct LevelData: Sendable, Identifiable {
+/// Configuration for one stage of the prompt tree.
+struct StageConfig {
     let id: Int
-    /// Natural element associated with this level (Air, Water, Sunlight, Soil, Nutrients).
-    let elementName: String
-    /// The prompt-engineering principle taught.
+    let emoji: String
+    let element: String
     let principle: String
-    /// Narrative metaphor connecting the element to the principle.
-    let metaphor: String
-    /// Why the tree element is "broken" at the start of this level.
-    let brokenReason: String
-    /// What the user must do to repair the tree element.
-    let userTask: String
-    /// Description of the visual feedback when the level is completed.
-    let visualFeedback: String
-    /// The exact system prompt sent to Foundation Models for evaluation.
+    let conceptText: String
+    let techniqueNames: [String]
     let systemEvaluationPrompt: String
-    /// All prompt examples for this level.
-    let examples: [PromptExample]
 }
 
-// MARK: - LevelDataStore
-/// Static repository of all 5 level configurations with real curriculum data.
-enum LevelDataStore {
+/// Backwards-compatible alias for evaluator files.
+typealias LevelData = StageConfig
 
-    /// All levels in order. Access by index (0-based) or use `level(for:)`.
-    static let allLevels: [LevelData] = [
-        airLevel,
-        waterLevel,
-        sunlightLevel,
-        soilLevel,
-        nutrientsLevel
+// MARK: - Stage 1 Blocks
+
+struct DragBlock: Identifiable, Hashable {
+    let id = UUID()
+    let text: String
+    let type: BlockType
+    let emoji: String
+
+    enum BlockType: String, Hashable {
+        case role
+        case task
+        case distractor
+    }
+}
+
+// MARK: - Stage 2 Reorder Items
+
+struct ReorderItem: Identifiable, Hashable {
+    let id = UUID()
+    let text: String
+    let category: String
+    let correctPosition: Int
+}
+
+// MARK: - Stage 5 PII Item
+
+struct PIITarget: Identifiable, Hashable {
+    let id = UUID()
+    let text: String
+    let type: String  // "institution", "email", "identifier", "safe"
+    let isPII: Bool   // true = must redact, false = safe keyword (decoy)
+}
+
+// MARK: - Curriculum Data Store
+
+enum Curriculum {
+
+    // MARK: - Starting Prompt
+    static let startingPrompt = "Tell me something about climate change."
+    static let startingTokens = 8
+
+    // MARK: - Stage Configs
+
+    static let stages: [StageConfig] = [
+        StageConfig(
+            id: 1, emoji: "🌬️", element: "Air", principle: "Clarity",
+            conceptText: "Air allows ideas to breathe.\n\nWhen a prompt has no clear intent, the AI inhales fog. It cannot understand WHO it is and WHAT it must do.",
+            techniqueNames: ["Role-Based Prompting", "Task-Based Prompting"],
+            systemEvaluationPrompt: "Evaluate if this prompt has clear intent, a defined role, and a specific task verb. Respond with JSON: {\"hasRole\": bool, \"hasTask\": bool, \"hasFillerPhrase\": bool, \"feedback\": \"string\"}"
+        ),
+        StageConfig(
+            id: 2, emoji: "💧", element: "Water", principle: "Structure",
+            conceptText: "Water flows — but only if it has a channel.\n\nThe prompt has a role and task now but no structure. Julie needs to organize it so the AI knows the order of operations.",
+            techniqueNames: ["Structured Prompting"],
+            systemEvaluationPrompt: "Evaluate if this prompt follows Role→Task→Audience→Constraint→OutputFormat structure. Respond with JSON: {\"score\": 0-100, \"hasStructure\": bool, \"feedback\": \"string\"}"
+        ),
+        StageConfig(
+            id: 3, emoji: "☀️", element: "Sunlight", principle: "Efficiency",
+            conceptText: "Sunlight is limited energy. The sun is blocked because of too many words.\n\nThe prompt is now correct but bloated. Julie must trim every redundant word without losing meaning.\n\nRedundant words cost real money and real time — across millions of requests.",
+            techniqueNames: ["Keyword Extraction", "Symbol Compression"],
+            systemEvaluationPrompt: "Evaluate if this prompt is efficiently compressed using symbols (& → [] {} | @ : ~ ! +) without losing meaning. Respond with JSON: {\"meaningPreserved\": bool, \"symbolsEffective\": bool, \"feedback\": \"string\"}"
+        ),
+        StageConfig(
+            id: 4, emoji: "🌍", element: "Soil", principle: "Context",
+            conceptText: "Soil gives grounding.\n\nA prompt with no context asks the AI to grow in mid-air. It needs a real-world anchor: Why is this being asked? In what situation? \n\nYou can also give an example or few and also tell AI how to think (step by step, chain of thought)",
+            techniqueNames: ["Context-Based Prompting", "Example as contex", "AI Thinking" ],
+            systemEvaluationPrompt: "Evaluate if this prompt has real-world context and a one-shot example. Respond with JSON: {\"score\": 0-100, \"hasContext\": bool, \"hasExample\": bool, \"feedback\": \"string\"}"
+        ),
+        StageConfig(
+            id: 5, emoji: "🛡️", element: "Nutrients", principle: "Safety & Privacy",
+            conceptText: "Nutrients are invisible — but without them, the tree becomes weak, disease prone and toxic.\n\nA prompt can look complete but still leak private data or invite unsafe responses.",
+            techniqueNames: ["Constraint-Based Prompting", "Output-Scoped Prompting"],
+            systemEvaluationPrompt: "Evaluate if this prompt has PII removed and safety constraints added. Respond with JSON: {\"score\": 0-100, \"hasPII\": bool, \"hasConstraints\": bool, \"feedback\": \"string\"}"
+        )
     ]
 
-    /// Retrieve a level by its 1-based ID.
-    static func level(for id: Int) -> LevelData? {
-        allLevels.first { $0.id == id }
+    static func stage(for id: Int) -> StageConfig? {
+        stages.first { $0.id == id }
     }
 
-    // MARK: - Level 1 — AIR (Clarity)
+    // MARK: - Stage 1: Drag & Drop Blocks
 
-    private static let airLevel = LevelData(
-        id: 1,
-        elementName: "Air",
-        principle: "Clarity",
-        metaphor: "Like clean air, a clear prompt lets the AI breathe and think without confusion.",
-        brokenReason: "Prompt is vague and ambiguous — the AI has no idea what you actually need.",
-        userTask: "Add clear intent, define a target audience, and specify the scope of the response.",
-        visualFeedback: "Misty haze clears from the tree canopy, revealing crisp blue sky and gently swaying branches.",
-        systemEvaluationPrompt: """
-            Evaluate if this rewritten prompt has clear intent, a defined target audience, and a specific scope. \
-            Respond with JSON: {"score": 0-100, "hasClearIntent": bool, "hasAudience": bool, "hasScope": bool, "feedback": "string"}
-            """,
-        examples: [
-            PromptExample(
-                badPrompt: "Summarize the patient file.",
-                goodPrompt: "Summarize the patient's medical history, current symptoms, lab results, and recommended treatment plan in bullet points.",
-                explanation: "The improved prompt specifies exactly which sections to summarize and what format to use, producing a far more accurate and useful medical summary.",
-                domain: .healthcare,
-                techniqueUsed: .taskPrompting,
-                structureBlocks: nil
-            ),
-            PromptExample(
-                badPrompt: "What should I do for diabetes?",
-                goodPrompt: "Explain diabetes management in simple language for a 56-year-old patient. Include diet, exercise, medication, and daily monitoring tips.",
-                explanation: "Adding the audience (56-year-old patient), scope (diet, exercise, medication, monitoring), and tone (simple language) transforms a vague question into actionable medical guidance.",
-                domain: .healthcare,
-                techniqueUsed: .taskPrompting,
-                structureBlocks: nil
-            ),
-            PromptExample(
-                badPrompt: "Tell me about climate change.",
-                goodPrompt: "Explain the top 3 causes of climate change and their environmental impact in a short paragraph suitable for a high school student.",
-                explanation: "The story mode intro prompt from Julie — originally vague, it now has scope (top 3 causes), format (short paragraph), and audience (high school student).",
-                domain: .general,
-                techniqueUsed: .taskPrompting,
-                structureBlocks: nil
-            )
-        ]
-    )
+    static let stage1Blocks: [DragBlock] = [
+        DragBlock(text: "You are a science educator", type: .role, emoji: "🎓"),
+        DragBlock(text: "Explain the main causes and effects", type: .task, emoji: "📋"),
+        DragBlock(text: "Could you please maybe help me understand", type: .distractor, emoji: "💬"),
+        DragBlock(text: "I was wondering if you could possibly", type: .distractor, emoji: "✍️"),
+    ]
 
-    // MARK: - Level 2 — WATER (Structure)
+    static let stage1ResultPrompt = "You are a science educator. Explain the main causes and effects of climate change."
 
-    private static let waterLevel = LevelData(
-        id: 2,
-        elementName: "Water",
-        principle: "Structure",
-        metaphor: "Like water flowing through channels, a structured prompt guides the AI along a clear path from input to output.",
-        brokenReason: "Prompt is an unstructured blob — the AI doesn't know what role to play, what task to do, what constraints to follow, or what format to output.",
-        userTask: "Arrange prompt blocks into the correct structure: Role → Task → Constraints → Output Format.",
-        visualFeedback: "Crystal-clear streams begin flowing down the tree's trunk, filling the roots with glowing blue water.",
-        systemEvaluationPrompt: """
-            Does this instruction clearly define a role, a task, constraints, and expected output format? \
-            Respond with JSON: {"score": 0-100, "hasRole": bool, "hasTask": bool, "hasConstraints": bool, "hasOutputFormat": bool, "feedback": "string"}
-            """,
-        examples: [
-            PromptExample(
-                badPrompt: "Check if customer is eligible.",
-                goodPrompt: "Based on the following data—age, income, credit score, existing loans, repayment history—determine if the customer is eligible for a home loan. Present the result in YES/NO format with justification.",
-                explanation: "The structured prompt defines the data inputs, the decision task, and the output format, leaving no ambiguity about what the AI should produce.",
-                domain: .finance,
-                techniqueUsed: .constraintPrompting,
-                structureBlocks: [
-                    "Role: Senior loan analyst",
-                    "Task: Determine home loan eligibility",
-                    "Constraints: Use age/income/credit score/loan history",
-                    "Output: YES/NO with justification"
-                ]
-            ),
-            PromptExample(
-                badPrompt: "Write the report.",
-                goodPrompt: "Draft a quarterly financial performance report for ABC Pvt Ltd covering revenue, expenses, profit/loss, key trends, and recommendations. Keep it within 200 words.",
-                explanation: "Adding the company context, specific sections to cover, and a word-count constraint transforms a vague instruction into a precise, actionable task.",
-                domain: .finance,
-                techniqueUsed: .outputFormatting,
-                structureBlocks: [
-                    "Role: Senior financial analyst",
-                    "Task: Draft Q3 financial report",
-                    "Constraints: Max 200 words, cover revenue/expenses/profit",
-                    "Output: Structured report"
-                ]
-            )
-        ]
-    )
+    // MARK: - Stage 2: Reorder Items
 
-    // MARK: - Level 3 — SUNLIGHT (Efficiency)
+    static let stage2Items: [ReorderItem] = [
+        ReorderItem(text: "You are a science educator", category: "Role", correctPosition: 0),
+        ReorderItem(text: "Explain the main causes and effects of climate change", category: "Task", correctPosition: 1),
+        ReorderItem(text: "for a high school student", category: "Audience", correctPosition: 2),
+        ReorderItem(text: "focusing on environmental and economic impacts", category: "Constraint", correctPosition: 3),
+        ReorderItem(text: "Use bullet points", category: "Output Format", correctPosition: 4),
+    ]
 
-    private static let sunlightLevel = LevelData(
-        id: 3,
-        elementName: "Sunlight",
-        principle: "Efficiency",
-        metaphor: "Like focused sunlight, an efficient prompt delivers maximum energy with minimum waste.",
-        brokenReason: "Prompt wastes words and tokens — it's bloated, repetitive, and costs more to process than necessary.",
-        userTask: "Trim redundant words while preserving the core meaning. Target at least 25% word reduction.",
-        visualFeedback: "Golden sunbeams break through the clouds and illuminate the tree's leaves, making them glow with warm light.",
-        systemEvaluationPrompt: """
-            Compare the original and compressed prompts. Does the compressed version fully preserve the original meaning? \
-            Respond with JSON: {"meaningPreserved": bool, "compressionQuality": 0-100, "feedback": "string"}
-            """,
-        examples: [
-            PromptExample(
-                badPrompt: "Write a reply to customer.",
-                goodPrompt: "Draft a polite apology email informing the customer that their delivery is delayed due to a logistics issue. Offer a 10% discount coupon and mention the new expected delivery date.",
-                explanation: "The original has only 5 words and zero structure. The efficient version is longer but every word carries meaning — tone, reason, compensation, and timeline are all specified. Efficiency means maximum info per token, not fewest words.",
-                domain: .customerService,
-                techniqueUsed: .taskPrompting,
-                structureBlocks: nil
-            ),
-            PromptExample(
-                badPrompt: "Explain the fraud case.",
-                goodPrompt: "Summarize the fraud pattern by listing suspicious transactions, time of occurrence, transaction frequency, and unusual device/location information.",
-                explanation: "Instead of a vague 'explain', the efficient prompt uses a single verb (summarize) and lists exactly 4 data points to cover, eliminating ambiguity with zero wasted tokens.",
-                domain: .customerService,
-                techniqueUsed: .constraintPrompting,
-                structureBlocks: nil
-            ),
-            PromptExample(
-                badPrompt: "Update the report.",
-                goodPrompt: "Update the patient's daily progress report by adding the following details: temperature, blood pressure, sugar level, medications administered, and nurse observations.",
-                explanation: "Every additional word in the improved version carries specific, necessary information. The token investment is justified by the precision of the output.",
-                domain: .healthcare,
-                techniqueUsed: .taskPrompting,
-                structureBlocks: nil
-            )
-        ]
-    )
+    static let stage2ResultPrompt = "You are a science educator. Explain the main causes and effects of climate change for a high school student, focusing on environmental and economic impacts. Use bullet points."
 
-    // MARK: - Level 4 — SOIL (Context)
+    // MARK: - Stage 3: Words to compress
 
-    private static let soilLevel = LevelData(
-        id: 4,
-        elementName: "Soil",
-        principle: "Context",
-        metaphor: "Like rich soil feeding the roots, the right context nourishes the AI's understanding and grounds its response in reality.",
-        brokenReason: "Prompt lacks essential background information, or overshares irrelevant details that confuse the AI.",
-        userTask: "Add only essential context — age, goal, budget, domain role — and include one-shot or few-shot examples where appropriate.",
-        visualFeedback: "Dark, cracked earth around the roots transforms into rich, glowing soil teeming with nutrients and tiny sparks of life.",
-        systemEvaluationPrompt: """
-            Is the added context in this prompt relevant and appropriately minimal — not excessive, not missing? \
-            Respond with JSON: {"score": 0-100, "isRelevant": bool, "isExcessive": bool, "isSufficient": bool, "feedback": "string"}
-            """,
-        examples: [
-            PromptExample(
-                badPrompt: "Suggest investments.",
-                goodPrompt: "Suggest a low-risk investment portfolio for a 35-year-old investor with ₹10 lakhs capital and a 5-year horizon. Include stocks, mutual funds, and fixed-income options.",
-                explanation: "Adding minimal but essential context — age (35), budget (₹10 lakhs), risk tolerance (low), and horizon (5 years) — lets the AI give a tailored, actionable recommendation instead of generic advice.",
-                domain: .finance,
-                techniqueUsed: .contextPrompting,
-                structureBlocks: nil
-            ),
-            PromptExample(
-                badPrompt: "Analyze the ECG report.",
-                goodPrompt: "You are a senior cardiologist. Analyze the ECG report and highlight any abnormalities.",
-                explanation: "Adding a role context ('senior cardiologist') makes the AI respond with domain-specific precision and clinical terminology rather than generic observations.",
-                domain: .healthcare,
-                techniqueUsed: .rolePrompting,
-                structureBlocks: nil
-            )
-        ]
-    )
+    /// The 42-token prompt from Stage 2 split into tappable words.
+    static let stage3Words: [String] = [
+        "You", "are", "a", "science", "educator", ".",
+        "Explain", "the", "main", "causes", "and",
+        "effects", "of", "climate", "change", "for",
+        "a", "high", "school", "student", ",",
+        "focusing", "on", "environmental", "and",
+        "economic", "impacts", ".", "Use", "bullet",
+        "points", "."
+    ]
 
-    // MARK: - Level 5 — NUTRIENTS (Safety / Privacy)
+    /// Words that are safe to remove (redundant filler).
+    static let stage3RedundantIndices: Set<Int> = [
+        0, 1, 2, // "You are a" → replaced by "Role:"
+        7,       // "the"
+        10, 11, 12, // "and effects of" → compress to "causes & effects"
+        21, 22,  // "focusing on" → replaced by ":"
+        28,      // "Use" → replaced by "→"
+    ]
 
-    private static let nutrientsLevel = LevelData(
-        id: 5,
-        elementName: "Nutrients",
-        principle: "Safety",
-        metaphor: "Like filtering toxins from nutrients, safe prompting removes sensitive data before feeding information to the AI.",
-        brokenReason: "Prompt leaks personal data — API keys, phone numbers, emails, or other PII — putting the user at risk.",
-        userTask: "Redact all PII (API keys, phone numbers, email addresses, tokens) and reframe the prompt safely without losing its purpose.",
-        visualFeedback: "Toxic purple particles dissolve from the tree's roots, replaced by glowing green nutrient streams that pulse with healthy energy.",
-        systemEvaluationPrompt: """
-            Does this prompt contain any personally identifiable information such as names, phone numbers, email addresses, API keys, or tokens? \
-            Respond with JSON: {"containsPII": bool, "detectedItems": ["string"], "isSafe": bool, "feedback": "string"}
-            """,
-        examples: [
-            PromptExample(
-                badPrompt: "My API key is sk-abc123xyz, my phone is 9876543210, help me debug this code.",
-                goodPrompt: "Help me debug this Python function. [API key removed] [Phone number removed]",
-                explanation: "The API key and phone number are stripped and replaced with safe placeholders. The AI can still help debug without ever seeing sensitive credentials.",
-                domain: .general,
-                techniqueUsed: .privacySafety,
-                structureBlocks: nil
-            ),
-            PromptExample(
-                badPrompt: "Check order status for Order ID #45892 for customer John Doe, email john@gmail.com.",
-                goodPrompt: "Check order status for Order ID #45892. Provide current location, expected delivery date, and any delay reasons.",
-                explanation: "The customer's name and email are unnecessary for checking an order status — removing them protects privacy while preserving the functional query.",
-                domain: .customerService,
-                techniqueUsed: .privacySafety,
-                structureBlocks: nil
-            )
-        ]
-    )
+    static let stage3TargetRange = 20...26
+    static let stage3OvercompressedThreshold = 16
+
+    static let stage3ResultPrompt = "Role: science educator. Explain climate change causes & effects for high schoolers: environmental & economic impacts → bullet points."
+
+    // MARK: - Stage 4: Context defaults
+
+    static let stage4ContextPlaceholder = "For a Grade 10 science revision worksheet."
+    static let stage4ExampleInput = "Explain deforestation causes."
+    static let stage4ExampleOutput = "• Cause 1: Agricultural expansion\n• Cause 2: Logging\n• Effect: Loss of biodiversity"
+
+    static let stage4ResultPrompt = """
+    Role: science educator. Context: Grade 10 revision worksheet. Explain climate change causes & effects for high schoolers: environmental & economic impacts → bullet points.
+    Example:
+    Input: Explain deforestation causes.
+    Output: • Cause 1 / Cause 2 / Effect
+    """
+
+    // MARK: - Stage 5: PII & Constraints
+
+    static let stage5UnsafePrompt = """
+    Role: science educator at Greenfield High School (teacher: mrs.sharma@greenfield.edu). Context: Grade 10 revision for student ID #4521. Explain climate change causes & effects for high schoolers: environmental & economic impacts → bullet points. Keep response under 150 words. Use scientific consensus only.
+    """
+
+    static let stage5PIITargets: [PIITarget] = [
+        // Real PII — must be redacted
+        PIITarget(text: "Greenfield High School", type: "institution", isPII: true),
+        PIITarget(text: "mrs.sharma@greenfield.edu", type: "email", isPII: true),
+        PIITarget(text: "student ID #4521", type: "identifier", isPII: true),
+        // Safe decoys — should NOT be redacted
+        PIITarget(text: "science educator", type: "role", isPII: false),
+        PIITarget(text: "climate change", type: "topic", isPII: false),
+        PIITarget(text: "Grade 10", type: "context", isPII: false),
+        PIITarget(text: "150 words", type: "constraint", isPII: false),
+        PIITarget(text: "bullet points", type: "format", isPII: false),
+    ]
+
+    static let stage5Constraints: [(label: String, defaultOn: Bool)] = [
+        ("Keep response under 150 words", true),
+        ("Use only established scientific consensus", true),
+        ("Avoid speculation", false),
+    ]
+
+    static let stage5FinalPrompt = """
+    Role: science educator. Context: Grade 10 revision worksheet. Explain climate change causes & effects for high schoolers: environmental & economic impacts → bullet points. Keep response under 150 words. Use scientific consensus only.
+    Example:
+    Input: Explain deforestation causes.
+    Output: • Cause 1 / Cause 2 / Effect
+    """
+
+    // MARK: - Dashboard Data
+
+    static let badPromptTokenCost = 303 // 4 repair exchanges
+    static let goodPromptTokenCost = 136 // 1 clean exchange
 }

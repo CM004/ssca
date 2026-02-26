@@ -2,178 +2,103 @@
 //  AppState.swift
 //  The Living Prompt Tree
 //
-//  Created by Chandramohan on 26/02/26.
+//  Central state for the stage-based prompt evolution flow.
 //
 
-import Foundation
 import SwiftUI
 
-// MARK: - AppState
-/// Central observable state for the Living Prompt Tree app.
-/// Tracks level completion, token savings, clarity scores, and environmental impact.
-/// All progress is automatically persisted to UserDefaults.
 @MainActor
 final class AppState: ObservableObject {
 
-    // MARK: - Constants
+    // MARK: - Stage Navigation
 
-    /// Energy consumed per token in kWh (industry estimate for on-device inference).
-    static let kWhPerToken: Double = 0.0000004
-    /// CO₂ emissions per kWh in kg (global average grid intensity).
-    static let kgCO2PerKWh: Double = 0.233
+    /// Current stage: 0 = intro, 1–5 = stages, 6 = dashboard
+    @Published var currentStage: Int = 0
 
-    private enum DefaultsKey {
-        static let currentLevel       = "lpt_currentLevel"
-        static let completedLevels    = "lpt_completedLevels"
-        static let totalTokensSaved   = "lpt_totalTokensSaved"
-        static let totalEnergySaved   = "lpt_totalEnergySaved"
-        static let clarityHistory     = "lpt_clarityScoreHistory"
-        static let privacyRisksRemoved = "lpt_privacyRisksRemoved"
-        static let promptHistory       = "lpt_promptHistory"
+    /// Stages the user has completed.
+    @Published var completedStages: Set<Int> = []
+
+    // MARK: - Prompt Evolution
+
+    /// The prompt that evolves through all 5 stages.
+    @Published var currentPrompt: String = "Tell me something about climate change."
+
+    /// Token count snapshot after each stage. Index 0 = starting prompt.
+    @Published var tokenHistory: [Int] = [8]
+
+    // MARK: - Domain
+
+    @Published var selectedDomain: String = "Education"
+
+    // MARK: - Stage Scores
+
+    @Published var stageScores: [Int: StageScore] = [:]
+
+    // MARK: - Computed
+
+    var currentTokenCount: Int {
+        currentPrompt.split(separator: " ").count
     }
 
-    // MARK: - Published Properties
-
-    /// The level the user is currently working on (1–5).
-    @Published var currentLevel: Int {
-        didSet { save() }
-    }
-
-    /// Set of level IDs the user has successfully completed.
-    @Published var completedLevels: Set<Int> {
-        didSet { save() }
-    }
-
-    /// Cumulative count of tokens saved by writing efficient prompts.
-    @Published var totalTokensSaved: Int {
-        didSet { save() }
-    }
-
-    /// Cumulative energy saved in kWh (derived from token savings).
-    @Published var totalEnergySaved: Double {
-        didSet { save() }
-    }
-
-    /// History of clarity scores achieved across all attempts.
-    @Published var clarityScoreHistory: [Int] {
-        didSet { save() }
-    }
-
-    /// Number of privacy/PII risks the user has successfully removed.
-    @Published var privacyRisksRemoved: Int {
-        didSet { save() }
-    }
-
-    /// Snapshot of user prompts as they progress through levels.
-    @Published var promptHistory: [String] {
-        didSet { save() }
-    }
-
-    /// Scratch prompt the user is currently editing in a level.
-    @Published var userPrompt: String = ""
-
-    // MARK: - Computed Properties
-
-    /// Overall completion progress from 0.0 to 1.0 across all 5 levels.
-    var overallProgress: Double {
-        Double(completedLevels.count) / 5.0
-    }
-
-    /// Whether the user has cleared all 5 levels.
     var isAllComplete: Bool {
-        completedLevels.count >= 5
+        completedStages.count >= 5
     }
 
-    /// Estimated carbon saved in kg CO₂, derived from cumulative token savings.
-    /// Formula: tokens × kWh/token × kgCO₂/kWh
-    var estimatedCarbonSaved: Double {
-        Double(totalTokensSaved) * Self.kWhPerToken * Self.kgCO2PerKWh
+    var overallProgress: Double {
+        Double(completedStages.count) / 5.0
     }
 
-    /// Average clarity score across all recorded attempts, or 0 if none.
-    var averageClarityScore: Int {
-        guard !clarityScoreHistory.isEmpty else { return 0 }
-        return clarityScoreHistory.reduce(0, +) / clarityScoreHistory.count
-    }
+    // MARK: - Actions
 
-    // MARK: - Initializer
+    func completeStage(_ stage: Int, newPrompt: String, score: StageScore) {
+        completedStages.insert(stage)
+        currentPrompt = newPrompt
+        tokenHistory.append(newPrompt.split(separator: " ").count)
+        stageScores[stage] = score
 
-    init() {
-        let defaults = UserDefaults.standard
-        self.currentLevel        = defaults.integer(forKey: DefaultsKey.currentLevel) == 0
-                                   ? 1 : defaults.integer(forKey: DefaultsKey.currentLevel)
-        let savedLevels          = defaults.array(forKey: DefaultsKey.completedLevels) as? [Int] ?? []
-        self.completedLevels     = Set(savedLevels)
-        self.totalTokensSaved    = defaults.integer(forKey: DefaultsKey.totalTokensSaved)
-        self.totalEnergySaved    = defaults.double(forKey: DefaultsKey.totalEnergySaved)
-        self.clarityScoreHistory = defaults.array(forKey: DefaultsKey.clarityHistory) as? [Int] ?? []
-        self.privacyRisksRemoved = defaults.integer(forKey: DefaultsKey.privacyRisksRemoved)
-        self.promptHistory       = defaults.stringArray(forKey: DefaultsKey.promptHistory) ?? []
-    }
-
-    // MARK: - Public Methods
-
-    /// Record the completion of a level.
-    /// - Parameters:
-    ///   - level: Level number (1–5) that was completed.
-    ///   - tokensSaved: Tokens saved in this level attempt.
-    ///   - clarityScore: Clarity score (0–100) achieved.
-    func completeLevel(_ level: Int, tokensSaved: Int, clarityScore: Int) {
-        completedLevels.insert(level)
-        totalTokensSaved += tokensSaved
-        totalEnergySaved += Double(tokensSaved) * Self.kWhPerToken
-        clarityScoreHistory.append(clarityScore)
-
-        // Advance to the next level if available
-        if level >= currentLevel && level < 5 {
-            currentLevel = level + 1
+        // Auto-advance to next stage
+        if stage < 5 {
+            currentStage = stage + 1
+        } else {
+            currentStage = 6 // Dashboard
         }
     }
 
-    /// Record the removal of privacy risks (Level 5).
-    /// - Parameter count: Number of PII items removed.
-    func recordPrivacyRisksRemoved(_ count: Int) {
-        privacyRisksRemoved += count
-    }
-
-    /// Reset all progress to initial state.
-    func resetProgress() {
-        currentLevel = 1
-        completedLevels = []
-        totalTokensSaved = 0
-        totalEnergySaved = 0.0
-        clarityScoreHistory = []
-        privacyRisksRemoved = 0
-        promptHistory = []
-        userPrompt = ""
-        clearDefaults()
-    }
-
-    // MARK: - Persistence
-
-    private func save() {
-        let defaults = UserDefaults.standard
-        defaults.set(currentLevel, forKey: DefaultsKey.currentLevel)
-        defaults.set(Array(completedLevels), forKey: DefaultsKey.completedLevels)
-        defaults.set(totalTokensSaved, forKey: DefaultsKey.totalTokensSaved)
-        defaults.set(totalEnergySaved, forKey: DefaultsKey.totalEnergySaved)
-        defaults.set(clarityScoreHistory, forKey: DefaultsKey.clarityHistory)
-        defaults.set(privacyRisksRemoved, forKey: DefaultsKey.privacyRisksRemoved)
-        defaults.set(promptHistory, forKey: DefaultsKey.promptHistory)
-    }
-
-    private func clearDefaults() {
-        let defaults = UserDefaults.standard
-        for key in [
-            DefaultsKey.currentLevel,
-            DefaultsKey.completedLevels,
-            DefaultsKey.totalTokensSaved,
-            DefaultsKey.totalEnergySaved,
-            DefaultsKey.clarityHistory,
-            DefaultsKey.privacyRisksRemoved,
-            DefaultsKey.promptHistory
-        ] {
-            defaults.removeObject(forKey: key)
+    func goToStage(_ stage: Int) {
+        // Can go to completed stages or the next unlocked one
+        let nextUnlocked = (completedStages.max() ?? 0) + 1
+        if completedStages.contains(stage) || stage <= nextUnlocked || stage == 0 {
+            currentStage = stage
+        }
+        // Dashboard requires all 5
+        if stage == 6 && isAllComplete {
+            currentStage = 6
         }
     }
+
+    func isStageUnlocked(_ stage: Int) -> Bool {
+        if stage == 0 { return true }
+        if stage == 6 { return isAllComplete }
+        let nextUnlocked = (completedStages.max() ?? 0) + 1
+        return completedStages.contains(stage) || stage <= nextUnlocked
+    }
+
+    func reset() {
+        currentStage = 0
+        completedStages = []
+        currentPrompt = "Tell me something about climate change."
+        tokenHistory = [8]
+        stageScores = [:]
+    }
+}
+
+// MARK: - StageScore
+
+struct StageScore {
+    let checks: [(label: String, passed: Bool)]
+    let total: Int
+    let earned: Int
+    let feedback: String
+
+    var label: String { "\(earned)/\(total)" }
 }
