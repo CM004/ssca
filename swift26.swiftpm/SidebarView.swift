@@ -50,38 +50,14 @@ struct SidebarView: View {
                 .listRowBackground(appState.currentStage == 6 ? Color.accentColor.opacity(0.1) : Color.clear)
             }
 
-            // Current prompt
-            Section("Current Prompt") {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(appState.currentPrompt)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(4)
-
-                    Text("\(appState.currentTokenCount) tokens")
-                        .font(.caption2.weight(.semibold).monospaced())
-                        .foregroundStyle(.orange)
-                }
-            }
-
             // Domain
             Section("Domain") {
-                ForEach(["Education", "Health", "Legal", "Finance", "Support"], id: \.self) { (domain: String) in
-                    Button {
-                        appState.selectedDomain = domain
-                    } label: {
-                        HStack {
-                            Text(domain)
-                                .foregroundStyle(appState.selectedDomain == domain ? Color.accentColor : .primary)
-                            Spacer()
-                            if appState.selectedDomain == domain {
-                                Image(systemName: "checkmark")
-                                    .font(.caption)
-                                    .foregroundStyle(Color.accentColor)
-                            }
-                        }
+                Picker("Select Domain :", selection: $appState.selectedDomain) {
+                    ForEach(["Education", "Health", "Legal", "Finance", "Support"], id: \.self) { (domain: String) in
+                        Text(domain).tag(domain)
                     }
                 }
+                .pickerStyle(.menu)
             }
         }
         .navigationTitle("SamvaadFlow")
