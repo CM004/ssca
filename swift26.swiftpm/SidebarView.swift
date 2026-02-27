@@ -20,7 +20,7 @@ struct SidebarView: View {
             } label: {
                 Label("Introduction", systemImage: "info.circle")
             }
-            .listRowBackground(appState.currentStage == 0 ? Color.accentColor.opacity(0.1) : Color.clear)
+            .listRowBackground(rowBG(active: appState.currentStage == 0))
 
             // Stages
             Section("Stages") {
@@ -47,7 +47,7 @@ struct SidebarView: View {
                     }
                 }
                 .disabled(!appState.isAllComplete)
-                .listRowBackground(appState.currentStage == 6 ? Color.accentColor.opacity(0.1) : Color.clear)
+                .listRowBackground(rowBG(active: appState.currentStage == 6))
             }
 
             // Domain
@@ -62,6 +62,17 @@ struct SidebarView: View {
         }
         .navigationTitle("SamvaadFlow")
         .listStyle(.sidebar)
+    }
+
+    // MARK: - Active row background (light blue capsule)
+
+    @ViewBuilder
+    private func rowBG(active: Bool) -> some View {
+        if active {
+            Capsule().fill(Color.blue.opacity(0.12))
+        } else {
+            Color.clear
+        }
     }
 
     // MARK: - Stage Row
@@ -90,6 +101,6 @@ struct SidebarView: View {
             }
         }
         .disabled(!isUnlocked)
-        .listRowBackground(isActive ? Color.accentColor.opacity(0.1) : Color.clear)
+        .listRowBackground(rowBG(active: isActive))
     }
 }
