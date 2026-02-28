@@ -61,6 +61,8 @@ struct ContentView: View {
             Stage5_NutrientsView()
         case 6:
             DashboardView()
+        case 7:
+            AboutView()
         default:
             Text("Unknown stage")
         }

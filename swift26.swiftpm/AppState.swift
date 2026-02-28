@@ -12,7 +12,7 @@ final class AppState: ObservableObject {
 
     // MARK: - Stage Navigation
 
-    /// Current stage: 0 = intro, 1–5 = stages, 6 = dashboard
+    /// Current stage: 0 = intro, 1–5 = stages, 6 = dashboard, 7 = about
     @Published var currentStage: Int = 0
 
     /// Stages the user has completed.
@@ -65,19 +65,29 @@ final class AppState: ObservableObject {
     }
 
     func goToStage(_ stage: Int) {
-        // Can go to completed stages or the next unlocked one
-        let nextUnlocked = (completedStages.max() ?? 0) + 1
-        if completedStages.contains(stage) || stage <= nextUnlocked || stage == 0 {
+        // Always allow Intro (0) and About (7)
+        if stage == 0 || stage == 7 {
             currentStage = stage
+            return
         }
-        // Dashboard requires all 5
-        if stage == 6 && isAllComplete {
-            currentStage = 6
+
+        // Dashboard requires all 5 stages completed
+        if stage == 6 {
+            if isAllComplete {
+                currentStage = 6
+            }
+            return
+        }
+
+        // For stages 1–5, allow completed or the next unlocked stage
+        let nextUnlocked = (completedStages.max() ?? 0) + 1
+        if completedStages.contains(stage) || stage <= nextUnlocked {
+            currentStage = stage
         }
     }
 
     func isStageUnlocked(_ stage: Int) -> Bool {
-        if stage == 0 { return true }
+        if stage == 0 || stage == 7 { return true }
         if stage == 6 { return isAllComplete }
         let nextUnlocked = (completedStages.max() ?? 0) + 1
         return completedStages.contains(stage) || stage <= nextUnlocked

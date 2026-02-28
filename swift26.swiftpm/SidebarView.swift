@@ -68,6 +68,19 @@ struct SidebarView: View {
             } header: {
                 Text("Domain").foregroundStyle(.green.opacity(0.7))
             }
+
+            // About
+            Section {
+                Button {
+                    appState.goToStage(7)
+                } label: {
+                    Label("About This App", systemImage: "info.circle.fill")
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+                .listRowBackground(rowBG(active: appState.currentStage == 7))
+            } header: {
+                Text("Info").foregroundStyle(.green.opacity(0.7))
+            }
         }
         .navigationTitle("SamvaadFlow")
         .listStyle(.sidebar)

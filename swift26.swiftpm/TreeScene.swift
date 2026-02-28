@@ -31,6 +31,7 @@ class TreeScene: SKScene, ObservableObject {
         drawGround()
         drawTrunk()
         drawInitialCanopy()
+        run(SKAction.repeatForever(SKAction.sequence([SKAction.wait(forDuration: 30), SKAction.run { [weak self] in self?.resetFogOverlay() }])), withKey: "fog_reset_timer")
     }
 
     // MARK: - Pixel tile helper
@@ -124,68 +125,7 @@ class TreeScene: SKScene, ObservableObject {
         drawCanopyTiles(centerX: centerX, centerY: centerY, colors: wiltedColors, name: "canopy_tile")
 
         // Fog overlay — oscillating multi-grey fog
-        let greys: [CGFloat] = [0.65, 0.72, 0.78, 0.85, 0.90, 0.95]
-        // Layer 1: small scattered fog tiles
-        for _ in 0..<80 {
-            let g = greys[Int.random(in: 0..<greys.count)]
-            let fogTile = SKSpriteNode(
-                color: SKColor(white: g, alpha: CGFloat.random(in: 0.3...0.5)),
-                size: CGSize(width: tileSize * 2, height: tileSize * 2)
-            )
-            fogTile.position = CGPoint(
-                x: CGFloat.random(in: 20...(size.width - 20)),
-                y: CGFloat.random(in: 100...(size.height - 20))
-            )
-            fogTile.zPosition = 50
-            fogTile.name = "fog_tile"
-            addChild(fogTile)
-            // Oscillate
-            let drift = SKAction.sequence([
-                SKAction.moveBy(x: CGFloat.random(in: -20...20), y: CGFloat.random(in: -10...10), duration: Double.random(in: 2...4)),
-                SKAction.moveBy(x: CGFloat.random(in: -20...20), y: CGFloat.random(in: -10...10), duration: Double.random(in: 2...4)),
-            ])
-            fogTile.run(SKAction.repeatForever(drift))
-        }
-        // Layer 2: larger, denser fog patches
-        for _ in 0..<50 {
-            let g = greys[Int.random(in: 0..<greys.count)]
-            let fogTile = SKSpriteNode(
-                color: SKColor(white: g, alpha: CGFloat.random(in: 0.4...0.6)),
-                size: CGSize(width: tileSize * CGFloat.random(in: 3...5), height: tileSize * CGFloat.random(in: 3...4))
-            )
-            fogTile.position = CGPoint(
-                x: CGFloat.random(in: 0...size.width),
-                y: CGFloat.random(in: 80...(size.height - 10))
-            )
-            fogTile.zPosition = 51
-            fogTile.name = "fog_tile"
-            addChild(fogTile)
-            let drift = SKAction.sequence([
-                SKAction.moveBy(x: CGFloat.random(in: -30...30), y: CGFloat.random(in: -15...15), duration: Double.random(in: 3...5)),
-                SKAction.moveBy(x: CGFloat.random(in: -30...30), y: CGFloat.random(in: -15...15), duration: Double.random(in: 3...5)),
-            ])
-            fogTile.run(SKAction.repeatForever(drift))
-        }
-        // Layer 3: thick fog band across the middle
-        for _ in 0..<40 {
-            let g = greys[Int.random(in: 0..<greys.count)]
-            let fogTile = SKSpriteNode(
-                color: SKColor(white: g, alpha: CGFloat.random(in: 0.5...0.7)),
-                size: CGSize(width: tileSize * CGFloat.random(in: 4...8), height: tileSize * CGFloat.random(in: 2...4))
-            )
-            fogTile.position = CGPoint(
-                x: CGFloat.random(in: 0...size.width),
-                y: CGFloat.random(in: 200...400)
-            )
-            fogTile.zPosition = 52
-            fogTile.name = "fog_tile"
-            addChild(fogTile)
-            let drift = SKAction.sequence([
-                SKAction.moveBy(x: CGFloat.random(in: -25...25), y: CGFloat.random(in: -12...12), duration: Double.random(in: 2.5...4.5)),
-                SKAction.moveBy(x: CGFloat.random(in: -25...25), y: CGFloat.random(in: -12...12), duration: Double.random(in: 2.5...4.5)),
-            ])
-            fogTile.run(SKAction.repeatForever(drift))
-        }
+        addFogOverlay()
 
         // Golden shimmer tracing tree outline
         let shimCenterX = size.width / 2
@@ -237,6 +177,82 @@ class TreeScene: SKScene, ObservableObject {
             shimmerStep = (shimmerStep + 1) % totalPts
         }
         run(SKAction.repeatForever(SKAction.sequence([advanceShimmer, SKAction.wait(forDuration: 0.04)])), withKey: "intro_shimmer")
+    }
+
+    // MARK: - Fog Overlay Helpers
+
+    private func addFogOverlay() {
+        let greys: [CGFloat] = [0.65, 0.72, 0.78, 0.85, 0.90, 0.95]
+        // Layer 1: small scattered fog tiles
+        for _ in 0..<80 {
+            let g = greys[Int.random(in: 0..<greys.count)]
+            let fogTile = SKSpriteNode(
+                color: SKColor(white: g, alpha: CGFloat.random(in: 0.3...0.5)),
+                size: CGSize(width: tileSize * 2, height: tileSize * 2)
+            )
+            fogTile.position = CGPoint(
+                x: CGFloat.random(in: 20...(size.width - 20)),
+                y: CGFloat.random(in: 100...(size.height - 20))
+            )
+            fogTile.zPosition = 50
+            fogTile.name = "fog_tile"
+            addChild(fogTile)
+            let drift = SKAction.sequence([
+                SKAction.moveBy(x: CGFloat.random(in: -20...20), y: CGFloat.random(in: -10...10), duration: Double.random(in: 2...4)),
+                SKAction.moveBy(x: CGFloat.random(in: -20...20), y: CGFloat.random(in: -10...10), duration: Double.random(in: 2...4)),
+            ])
+            fogTile.run(SKAction.repeatForever(drift))
+        }
+        // Layer 2: larger, denser fog patches
+        for _ in 0..<50 {
+            let g = greys[Int.random(in: 0..<greys.count)]
+            let fogTile = SKSpriteNode(
+                color: SKColor(white: g, alpha: CGFloat.random(in: 0.4...0.6)),
+                size: CGSize(width: tileSize * CGFloat.random(in: 3...5), height: tileSize * CGFloat.random(in: 3...4))
+            )
+            fogTile.position = CGPoint(
+                x: CGFloat.random(in: 0...size.width),
+                y: CGFloat.random(in: 80...(size.height - 10))
+            )
+            fogTile.zPosition = 51
+            fogTile.name = "fog_tile"
+            addChild(fogTile)
+            let drift = SKAction.sequence([
+                SKAction.moveBy(x: CGFloat.random(in: -30...30), y: CGFloat.random(in: -15...15), duration: Double.random(in: 3...5)),
+                SKAction.moveBy(x: CGFloat.random(in: -30...30), y: CGFloat.random(in: -15...15), duration: Double.random(in: 3...5)),
+            ])
+            fogTile.run(SKAction.repeatForever(drift))
+        }
+        // Layer 3: thick fog band across the middle
+        for _ in 0..<40 {
+            let g = greys[Int.random(in: 0..<greys.count)]
+            let fogTile = SKSpriteNode(
+                color: SKColor(white: g, alpha: CGFloat.random(in: 0.5...0.7)),
+                size: CGSize(width: tileSize * CGFloat.random(in: 4...8), height: tileSize * CGFloat.random(in: 2...4))
+            )
+            fogTile.position = CGPoint(
+                x: CGFloat.random(in: 0...size.width),
+                y: CGFloat.random(in: 200...400)
+            )
+            fogTile.zPosition = 52
+            fogTile.name = "fog_tile"
+            addChild(fogTile)
+            let drift = SKAction.sequence([
+                SKAction.moveBy(x: CGFloat.random(in: -25...25), y: CGFloat.random(in: -12...12), duration: Double.random(in: 2.5...4.5)),
+                SKAction.moveBy(x: CGFloat.random(in: -25...25), y: CGFloat.random(in: -12...12), duration: Double.random(in: 2.5...4.5)),
+            ])
+            fogTile.run(SKAction.repeatForever(drift))
+        }
+    }
+
+    /// Removes existing fog tiles and rebuilds them. Only runs while the intro shimmer is active (intro state).
+    func resetFogOverlay() {
+        // Only reset fog during the intro state (shimmer active)
+        guard action(forKey: "intro_shimmer") != nil else { return }
+        enumerateChildNodes(withName: "fog_tile") { node, _ in
+            node.removeFromParent()
+        }
+        addFogOverlay()
     }
 
     private func drawCanopyTiles(centerX: CGFloat, centerY: CGFloat, colors: [SKColor], name: String) {
@@ -789,3 +805,4 @@ class TreeScene: SKScene, ObservableObject {
         ]))
     }
 }
+
