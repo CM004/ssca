@@ -223,15 +223,7 @@ struct DashboardView: View {
                     Button {
                         appState.reset()
                     } label: {
-                        Text("Try Another Domain")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-
-                    Button { } label: {
-                        Label("Share My Tree", systemImage: "square.and.arrow.up")
+                        Text("Try Another Domain Prompt")
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                     }

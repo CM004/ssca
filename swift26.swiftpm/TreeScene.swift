@@ -265,7 +265,7 @@ class TreeScene: SKScene, ObservableObject {
                 SKAction.removeFromParent(),
             ]))
         }
-        run(SKAction.repeatForever(SKAction.sequence([emitter, SKAction.wait(forDuration: 0.25)])))
+        run(SKAction.repeatForever(SKAction.sequence([emitter, SKAction.wait(forDuration: 0.25)])), withKey: "water_xylem")
 
         // Water droplets moving toward roots (absorption)
         let absorbTargets: [(CGFloat, CGFloat)] = [
@@ -297,7 +297,7 @@ class TreeScene: SKScene, ObservableObject {
                 SKAction.removeFromParent(),
             ]))
         }
-        run(SKAction.repeatForever(SKAction.sequence([absorbEmitter, SKAction.wait(forDuration: 0.4)])))
+        run(SKAction.repeatForever(SKAction.sequence([absorbEmitter, SKAction.wait(forDuration: 0.4)])), withKey: "water_absorb")
 
         // Deepen canopy green as water reaches leaves
         enumerateChildNodes(withName: "canopy_tile") { node, _ in
@@ -335,22 +335,34 @@ class TreeScene: SKScene, ObservableObject {
             }
         }
 
-        // Brighten canopy to vibrant green
+        // Brighten canopy and add continuous glitter
+        let greens: [SKColor] = [
+            SKColor(red: 0.18, green: 0.62, blue: 0.15, alpha: 1.0),  // bright green
+            SKColor(red: 0.22, green: 0.58, blue: 0.20, alpha: 1.0),  // warm green
+            SKColor(red: 0.15, green: 0.65, blue: 0.12, alpha: 1.0),  // vivid green
+            SKColor(red: 0.28, green: 0.55, blue: 0.18, alpha: 1.0),  // sun-kissed green
+            SKColor(red: 0.12, green: 0.52, blue: 0.14, alpha: 1.0),  // deeper forest
+            SKColor(red: 0.30, green: 0.65, blue: 0.25, alpha: 1.0),  // light lime
+        ]
         enumerateChildNodes(withName: "canopy_tile") { node, _ in
             if let sprite = node as? SKSpriteNode {
+                // Initial colorize
+                let initialDelay = Double.random(in: 0...0.5)
                 sprite.run(SKAction.sequence([
-                    SKAction.wait(forDuration: Double.random(in: 0...0.5)),
-                    SKAction.colorize(
-                        with: [
-                            SKColor(red: 0.18, green: 0.62, blue: 0.15, alpha: 1.0),  // bright green
-                            SKColor(red: 0.22, green: 0.58, blue: 0.20, alpha: 1.0),  // warm green
-                            SKColor(red: 0.15, green: 0.65, blue: 0.12, alpha: 1.0),  // vivid green
-                            SKColor(red: 0.28, green: 0.55, blue: 0.18, alpha: 1.0),  // sun-kissed green
-                            SKColor(red: 0.12, green: 0.52, blue: 0.14, alpha: 1.0),  // deeper forest
-                            SKColor(red: 0.30, green: 0.65, blue: 0.25, alpha: 1.0),  // light lime
-                        ].randomElement()!,
-                        colorBlendFactor: 0.8, duration: 0.8
-                    ),
+                    SKAction.wait(forDuration: initialDelay),
+                    SKAction.colorize(with: greens.randomElement()!, colorBlendFactor: 0.8, duration: 0.8),
+                ]))
+
+                // Continuous glitter — keep cycling through greens
+                let glitterDelay = initialDelay + 1.0
+                let glitter = SKAction.sequence([
+                    SKAction.colorize(with: greens.randomElement()!, colorBlendFactor: 0.9, duration: Double.random(in: 0.6...1.2)),
+                    SKAction.colorize(with: greens.randomElement()!, colorBlendFactor: 0.85, duration: Double.random(in: 0.6...1.2)),
+                    SKAction.colorize(with: greens.randomElement()!, colorBlendFactor: 0.9, duration: Double.random(in: 0.6...1.2)),
+                ])
+                sprite.run(SKAction.sequence([
+                    SKAction.wait(forDuration: glitterDelay),
+                    SKAction.repeatForever(glitter),
                 ]))
             }
         }
@@ -467,6 +479,97 @@ class TreeScene: SKScene, ObservableObject {
     private func animateNutrients() {
         let centerX = size.width / 2
 
+        // Nutrient colors
+        let nutrientColors: [SKColor] = [
+            SKColor(red: 0.90, green: 0.20, blue: 0.25, alpha: 0.8),  // red
+            SKColor(red: 0.30, green: 0.45, blue: 0.90, alpha: 0.8),  // blue
+            SKColor(red: 0.60, green: 0.25, blue: 0.80, alpha: 0.8),  // purple
+            SKColor(red: 0.90, green: 0.40, blue: 0.65, alpha: 0.8),  // pink
+        ]
+
+        // Fruit / flower colors for canopy
+        let fruitColors: [SKColor] = [
+            SKColor(red: 0.95, green: 0.25, blue: 0.20, alpha: 1.0),  // red fruit
+            SKColor(red: 0.95, green: 0.55, blue: 0.75, alpha: 1.0),  // pink flower
+            SKColor(red: 0.70, green: 0.30, blue: 0.85, alpha: 1.0),  // purple flower
+            SKColor(red: 0.95, green: 0.80, blue: 0.20, alpha: 1.0),  // yellow fruit
+            SKColor(red: 1.00, green: 0.55, blue: 0.30, alpha: 1.0),  // orange fruit
+        ]
+
+        // Nutrient drops absorbed at root tips, travel up, become fruits
+        let rootTips: [(CGFloat, CGFloat)] = [
+            (-80, 30), (-50, 20), (-30, 40),
+            (80, 30), (50, 20), (30, 40),
+            (0, 10),
+        ]
+
+        let nutrientEmitter = SKAction.run { [weak self] in
+            guard let self else { return }
+            let tip = rootTips[Int.random(in: 0..<rootTips.count)]
+            let color = nutrientColors[Int.random(in: 0..<nutrientColors.count)]
+
+            // Nutrient drop appears near root
+            let drop = SKSpriteNode(color: color, size: CGSize(width: self.tileSize, height: self.tileSize))
+            drop.position = CGPoint(
+                x: centerX + tip.0 + CGFloat.random(in: -15...15),
+                y: tip.1 + CGFloat.random(in: -10...10)
+            )
+            drop.zPosition = 12
+            self.addChild(drop)
+
+            // Move to trunk base, then rise up to canopy
+            let trunkX = centerX + CGFloat.random(in: -8...8)
+            drop.run(SKAction.sequence([
+                // Move toward trunk base
+                SKAction.move(to: CGPoint(x: trunkX, y: 75), duration: 0.6),
+                // Rise up through trunk
+                SKAction.moveTo(y: 350, duration: 1.2),
+                SKAction.fadeOut(withDuration: 0.1),
+                SKAction.removeFromParent(),
+            ]))
+
+            // Spawn a fruit/flower in canopy after nutrient arrives
+            let fruitDelay = 1.8 + Double.random(in: 0...0.3)
+            self.run(SKAction.sequence([
+                SKAction.wait(forDuration: fruitDelay),
+                SKAction.run {
+                    let fruitSize = self.tileSize * CGFloat.random(in: 0.5...1.0)
+                    let fruit = SKSpriteNode(
+                        color: fruitColors[Int.random(in: 0..<fruitColors.count)],
+                        size: CGSize(width: fruitSize, height: fruitSize)
+                    )
+                    let angle = CGFloat.random(in: 0...(2 * .pi))
+                    let r = CGFloat.random(in: 30...100)
+                    fruit.position = CGPoint(
+                        x: centerX + cos(angle) * r,
+                        y: 350 + sin(angle) * r * 0.75
+                    )
+                    fruit.zPosition = 18
+                    fruit.alpha = 0
+                    fruit.setScale(0.3)
+                    self.addChild(fruit)
+                    fruit.run(SKAction.group([
+                        SKAction.fadeIn(withDuration: 0.3),
+                        SKAction.scale(to: 1.0, duration: 0.3),
+                    ]))
+                },
+            ]))
+        }
+        let nutrientAction = SKAction.repeatForever(SKAction.sequence([nutrientEmitter, SKAction.wait(forDuration: 0.5)]))
+        let emitterNode = SKNode()
+        addChild(emitterNode)
+        emitterNode.run(nutrientAction)
+
+        // Stop all flows (water + nutrients) after 2 minutes
+        run(SKAction.sequence([
+            SKAction.wait(forDuration: 120),
+            SKAction.run { [weak self] in
+                self?.removeAction(forKey: "water_xylem")
+                self?.removeAction(forKey: "water_absorb")
+                emitterNode.removeFromParent()
+            },
+        ]))
+
         // Full vibrant canopy
         enumerateChildNodes(withName: "canopy_tile") { node, _ in
             if let sprite = node as? SKSpriteNode {
@@ -481,7 +584,7 @@ class TreeScene: SKScene, ObservableObject {
             }
         }
 
-        // Golden glow ring — tile-based
+        // Golden glow ring
         for angle in stride(from: 0.0, to: 360.0, by: 8.0) {
             let rad = angle * .pi / 180.0
             let glowTile = SKSpriteNode(
@@ -493,10 +596,7 @@ class TreeScene: SKScene, ObservableObject {
                 y: 350 + sin(rad) * 95
             )
             glowTile.zPosition = 20
-            glowTile.name = "glow_tile"
             addChild(glowTile)
-
-            // Pulsing glow
             let pulse = SKAction.sequence([
                 SKAction.fadeAlpha(to: 0.7, duration: 0.8 + Double.random(in: 0...0.3)),
                 SKAction.fadeAlpha(to: 0.2, duration: 0.8 + Double.random(in: 0...0.3)),
@@ -504,26 +604,8 @@ class TreeScene: SKScene, ObservableObject {
             glowTile.run(SKAction.repeatForever(pulse))
         }
 
-        // Sparkle burst tiles
-        for _ in 0..<20 {
-            let spark = SKSpriteNode(
-                color: SKColor(red: 1.0, green: 0.92, blue: 0.5, alpha: 0.9),
-                size: CGSize(width: tileSize, height: tileSize)
-            )
-            spark.position = CGPoint(x: centerX, y: 380)
-            spark.zPosition = 30
-            addChild(spark)
-            spark.run(SKAction.sequence([
-                SKAction.group([
-                    SKAction.moveBy(x: CGFloat.random(in: -100...100), y: CGFloat.random(in: -60...100), duration: 1.0),
-                    SKAction.fadeOut(withDuration: 1.0),
-                ]),
-                SKAction.removeFromParent(),
-            ]))
-        }
-
         // Banner
-        let banner = SKLabelNode(text: "🌳 Restored")
+        let banner = SKLabelNode(text: "Prompt Tree Restored")
         banner.fontSize = 16
         banner.fontName = "Menlo-Bold"
         banner.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)
@@ -532,7 +614,7 @@ class TreeScene: SKScene, ObservableObject {
         banner.zPosition = 40
         addChild(banner)
         banner.run(SKAction.sequence([
-            SKAction.wait(forDuration: 1.0),
+            SKAction.wait(forDuration: 2.0),
             SKAction.fadeIn(withDuration: 0.5),
         ]))
     }
