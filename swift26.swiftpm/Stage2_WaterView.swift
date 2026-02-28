@@ -68,8 +68,8 @@ struct Stage2_WaterView: View {
 
                 // Reorder list
                 VStack(spacing: 4) {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        reorderRow(index: index, item: item)
+                    ForEach(items) { item in
+                        reorderRow(item: item)
                     }
                 }
 
@@ -106,7 +106,8 @@ struct Stage2_WaterView: View {
         }
     }
 
-    private func reorderRow(index: Int, item: ReorderItem) -> some View {
+    private func reorderRow(item: ReorderItem) -> some View {
+        let index = items.firstIndex(where: { $0.id == item.id }) ?? 0
         let isCorrectSpot = item.correctPosition == index
 
         return HStack(spacing: 10) {
@@ -125,11 +126,19 @@ struct Stage2_WaterView: View {
             Spacer()
 
             VStack(spacing: 2) {
-                Button { moveItem(at: index, direction: -1) } label: {
+                Button {
+                    if let idx = items.firstIndex(where: { $0.id == item.id }) {
+                        moveItem(at: idx, direction: -1)
+                    }
+                } label: {
                     Image(systemName: "chevron.up").font(.caption2.weight(.bold))
                 }
                 .disabled(index == 0)
-                Button { moveItem(at: index, direction: 1) } label: {
+                Button {
+                    if let idx = items.firstIndex(where: { $0.id == item.id }) {
+                        moveItem(at: idx, direction: 1)
+                    }
+                } label: {
                     Image(systemName: "chevron.down").font(.caption2.weight(.bold))
                 }
                 .disabled(index == items.count - 1)

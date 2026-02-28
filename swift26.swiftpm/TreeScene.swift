@@ -195,10 +195,10 @@ class TreeScene: SKScene, ObservableObject {
             let trunkW: CGFloat = row > 240 ? 2 : row > 200 ? 3 : 4
             outlinePoints.append(CGPoint(x: shimCenterX - (trunkW * tileSize / 2), y: row))
         }
-        // Canopy outline
+        // Canopy outline — clockwise from bottom
         let canopySteps = 50
         for i in 0..<canopySteps {
-            let angle = (.pi / 2) + (CGFloat(i) / CGFloat(canopySteps)) * 2 * .pi
+            let angle = (-.pi / 2) - (CGFloat(i) / CGFloat(canopySteps)) * 2 * .pi
             let r: CGFloat = 105
             outlinePoints.append(CGPoint(
                 x: shimCenterX + cos(angle) * r,
@@ -678,18 +678,17 @@ class TreeScene: SKScene, ObservableObject {
             glowTile.run(SKAction.repeatForever(pulse))
         }
 
-        // Full tree glow — small golden pixels
-        let goldenGlow = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)
+        // Full tree glow — small bright golden pixels
+        let goldenGlow = SKColor(red: 1.0, green: 0.75, blue: 0.1, alpha: 1.0)
+        let canopyGlowSize = CGSize(width: tileSize * 2, height: tileSize * 2)
+        let trunkGlowSize = CGSize(width: tileSize, height: tileSize)
 
-        // Elliptical golden glow around canopy
-        for i in 0..<25 {
-            let angle = (CGFloat(i) / 25.0) * 2 * .pi
+        // Elliptical golden glow around canopy — 45 tiles (2× trunk size)
+        for i in 0..<45 {
+            let angle = (CGFloat(i) / 45.0) * 2 * .pi
             let rx: CGFloat = 130
             let ry: CGFloat = 105
-            let glowSpot = SKSpriteNode(
-                color: goldenGlow,
-                size: CGSize(width: tileSize * 1.5, height: tileSize * 1.5)
-            )
+            let glowSpot = SKSpriteNode(color: goldenGlow, size: canopyGlowSize)
             glowSpot.position = CGPoint(
                 x: centerX + cos(angle) * rx,
                 y: 350 + sin(angle) * ry * 0.8
@@ -698,21 +697,18 @@ class TreeScene: SKScene, ObservableObject {
             glowSpot.alpha = 0
             addChild(glowSpot)
             glowSpot.run(SKAction.sequence([
-                SKAction.wait(forDuration: 1.0 + Double(i) * 0.04),
-                SKAction.fadeAlpha(to: 0.3, duration: 0.8),
+                SKAction.wait(forDuration: 1.0 + Double(i) * 0.02),
+                SKAction.fadeAlpha(to: 0.35, duration: 0.8),
                 SKAction.repeatForever(SKAction.sequence([
-                    SKAction.fadeAlpha(to: 0.45, duration: 1.5),
-                    SKAction.fadeAlpha(to: 0.15, duration: 1.5),
+                    SKAction.fadeAlpha(to: 0.55, duration: 1.5),
+                    SKAction.fadeAlpha(to: 0.2, duration: 1.5),
                 ])),
             ]))
         }
         // Inner golden fill
         for i in 0..<12 {
             let angle = (CGFloat(i) / 12.0) * 2 * .pi
-            let innerGlow = SKSpriteNode(
-                color: goldenGlow,
-                size: CGSize(width: tileSize * 1.2, height: tileSize * 1.2)
-            )
+            let innerGlow = SKSpriteNode(color: goldenGlow, size: canopyGlowSize)
             innerGlow.position = CGPoint(
                 x: centerX + cos(angle) * 65,
                 y: 350 + sin(angle) * 50
@@ -722,24 +718,21 @@ class TreeScene: SKScene, ObservableObject {
             addChild(innerGlow)
             innerGlow.run(SKAction.sequence([
                 SKAction.wait(forDuration: 1.3),
-                SKAction.fadeAlpha(to: 0.25, duration: 0.8),
+                SKAction.fadeAlpha(to: 0.3, duration: 0.8),
                 SKAction.repeatForever(SKAction.sequence([
-                    SKAction.fadeAlpha(to: 0.35, duration: 1.2),
-                    SKAction.fadeAlpha(to: 0.12, duration: 1.2),
+                    SKAction.fadeAlpha(to: 0.45, duration: 1.2),
+                    SKAction.fadeAlpha(to: 0.15, duration: 1.2),
                 ])),
             ]))
         }
 
-        // Trunk golden glow — small tiles along edges
-        for row in stride(from: CGFloat(80), to: CGFloat(275), by: tileSize * 2) {
+        // Trunk golden glow — tiles along edges, offset outward so fully visible
+        for row in stride(from: CGFloat(75), to: CGFloat(280), by: tileSize) {
             for side in [-1.0, 1.0] as [CGFloat] {
                 let trunkW: CGFloat = row > 240 ? 2 : row > 200 ? 3 : 4
-                let tGlow = SKSpriteNode(
-                    color: goldenGlow,
-                    size: CGSize(width: tileSize, height: tileSize)
-                )
+                let tGlow = SKSpriteNode(color: goldenGlow, size: trunkGlowSize)
                 tGlow.position = CGPoint(
-                    x: centerX + side * (trunkW * tileSize / 2 + tileSize * 0.5),
+                    x: centerX + side * (trunkW * tileSize / 2 + tileSize),
                     y: row
                 )
                 tGlow.zPosition = 3
@@ -747,10 +740,10 @@ class TreeScene: SKScene, ObservableObject {
                 addChild(tGlow)
                 tGlow.run(SKAction.sequence([
                     SKAction.wait(forDuration: 1.0),
-                    SKAction.fadeAlpha(to: 0.25, duration: 0.8),
+                    SKAction.fadeAlpha(to: 0.3, duration: 0.8),
                     SKAction.repeatForever(SKAction.sequence([
-                        SKAction.fadeAlpha(to: 0.35, duration: 1.5),
-                        SKAction.fadeAlpha(to: 0.1, duration: 1.5),
+                        SKAction.fadeAlpha(to: 0.45, duration: 1.5),
+                        SKAction.fadeAlpha(to: 0.12, duration: 1.5),
                     ])),
                 ]))
             }
@@ -783,9 +776,9 @@ class TreeScene: SKScene, ObservableObject {
         }
         // Banner
         let banner = SKLabelNode(text: "Prompt Tree Restored")
-        banner.fontSize = 16
+        banner.fontSize = 20
         banner.fontName = "Menlo-Bold"
-        banner.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)
+        banner.fontColor = SKColor(red: 0.85, green: 0.45, blue: 0.0, alpha: 1.0)
         banner.position = CGPoint(x: centerX, y: 480)
         banner.alpha = 0
         banner.zPosition = 40

@@ -182,21 +182,18 @@ struct Stage5_NutrientsView: View {
                 }
 
                 // Constraint builder
-                if showConstraintBuilder || allPIIFound {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Add output constraints:")
-                            .font(.subheadline.weight(.medium))
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Add output constraints:")
+                        .font(.subheadline.weight(.medium))
 
-                        ForEach(Array(constraints.enumerated()), id: \.offset) { idx, constraint in
-                            Toggle(constraint.label, isOn: Binding(
-                                get: { constraints[idx].isOn },
-                                set: { constraints[idx].isOn = $0 }
-                            ))
-                            .font(.subheadline)
-                            .tint(.green)
-                        }
+                    ForEach(Array(constraints.enumerated()), id: \.offset) { idx, constraint in
+                        Toggle(constraint.label, isOn: Binding(
+                            get: { constraints[idx].isOn },
+                            set: { constraints[idx].isOn = $0 }
+                        ))
+                        .font(.subheadline)
+                        .tint(.green)
                     }
-                    .transition(.opacity)
                 }
 
                 // Final prompt

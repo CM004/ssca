@@ -35,6 +35,7 @@ struct ContentView: View {
                 .ignoresSafeArea()
         }
         .navigationSplitViewStyle(.balanced)
+        .navigationSplitViewColumnWidth(ideal: 400)
         .environmentObject(appState)
         .onChange(of: appState.completedStages) { _, newValue in
             if let latest = newValue.max() {

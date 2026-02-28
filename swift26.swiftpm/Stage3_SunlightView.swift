@@ -32,6 +32,7 @@ private let symbolReference: [SymbolRule] = [
     SymbolRule(symbol: "~", meaning: "Approximately", example: "~50 words"),
     SymbolRule(symbol: "!", meaning: "Exclude / negate", example: "!filler"),
     SymbolRule(symbol: "+", meaning: "Include / add", example: "+examples"),
+    SymbolRule(symbol: "-", meaning: "Remove / subtract", example: "-jargon"),
 ]
 
 struct Stage3_SunlightView: View {
@@ -39,7 +40,7 @@ struct Stage3_SunlightView: View {
     @EnvironmentObject var appState: AppState
     private let config = Curriculum.stage(for: 3)!
     private let words = Curriculum.stage3Words
-    private let redundantIndices = Curriculum.stage3RedundantIndices
+    private let fallbackRedundantIndices = Curriculum.stage3RedundantIndices
 
     @State private var struckIndices: Set<Int> = []
     @State private var showHints = false
@@ -135,7 +136,7 @@ struct Stage3_SunlightView: View {
                 } label: {
                     HStack(spacing: 4) {
                         if isLoadingHints { ProgressView().controlSize(.small) }
-                        Label(showHints ? "Hide redundant words" : "Show redundant words",
+                        Label(showHints ? "Hide removable tokens" : "Show removable tokens",
                               systemImage: showHints ? "eye.slash" : "eye")
                             .font(.caption)
                     }
@@ -262,10 +263,10 @@ struct Stage3_SunlightView: View {
 
     private func wordButton(idx: Int, word: String) -> some View {
         let isStruck = struckIndices.contains(idx)
-        let isRedundant = showHints && fmRedundantIndices.contains(idx)
-        let bgColor: Color = isStruck ? .red.opacity(0.06) : isRedundant ? .orange.opacity(0.06) : Color(.secondarySystemFill)
-        let borderColor: Color = isStruck ? .red.opacity(0.3) : isRedundant ? .orange.opacity(0.3) : .clear
-        let textColor: Color = isStruck ? .secondary : isRedundant ? .orange : .primary
+        let isRemovable = showHints && fmRedundantIndices.contains(idx)
+        let bgColor: Color = isStruck ? .red.opacity(0.06) : isRemovable ? .orange.opacity(0.06) : Color(.secondarySystemFill)
+        let borderColor: Color = isStruck ? .red.opacity(0.3) : isRemovable ? .orange.opacity(0.3) : .clear
+        let textColor: Color = isStruck ? .secondary : isRemovable ? .orange : .primary
 
         return Button {
             withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
@@ -277,7 +278,6 @@ struct Stage3_SunlightView: View {
         } label: {
             Text(word)
                 .font(.caption)
-                .strikethrough(isStruck, color: .red)
                 .foregroundStyle(textColor)
                 .padding(.horizontal, 8).padding(.vertical, 5)
                 .background(bgColor, in: RoundedRectangle(cornerRadius: 6))
@@ -376,8 +376,12 @@ struct Stage3_SunlightView: View {
                 let numberedWords = words.enumerated().map { "\($0.offset):\($0.element)" }.joined(separator: ", ")
                 let prompt = """
                 Here is a prompt split into numbered words: \(numberedWords)
-                Identify which word indices are redundant, filler, or can be removed without losing core meaning.
-                Respond with ONLY a JSON array of integer indices, e.g. [2,5,8,12].
+                
+                Task: Identify word indices that can be removed OR rewritten more concisely using symbols. So that prompt tokens given to LLM is minimised.
+                Removable: filler words, redundant adjectives, repeated meaning, unnecessary articles/prepositions, ful stops
+                Symbol-rewritable: words like "and" (use &), "or" (use |), "produce/output" (use =>), "approximately" (use ~), "include" (use +), "remove/subtract" (use -), "define/specify" (use :), "exclude" (use !), "as a/role of" (use @), enumerated lists (use []), structured data (use {}).
+                
+                Respond with ONLY a JSON array of integer indices of ALL words that are either removable or could be replaced by symbols, e.g. [2,5,8,12].
                 """
                 let response = try await session.respond(to: prompt)
                 let text = response.content.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -395,7 +399,7 @@ struct Stage3_SunlightView: View {
 
         // Fallback to static indices if FM returned nothing
         if indices.isEmpty {
-            indices = Set(redundantIndices)
+            indices = Set(fallbackRedundantIndices)
         }
 
         await MainActor.run {
