@@ -77,8 +77,9 @@ struct DashboardView: View {
 
                 Text("Your Prompt's Impact")
                     .font(.largeTitle.weight(.bold))
+                    .foregroundStyle(.white)
 
-                Divider()
+                Divider().overlay(Color.green.opacity(0.2))
 
                 // Token Journey Chart
                 chartCard(title: "Token Journey", infoCard: .tokenJourney) {
@@ -234,6 +235,7 @@ struct DashboardView: View {
             }
             .padding(24)
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Dashboard")
         .task { await estimateExchanges() }
         .sheet(item: $activeInfo) { card in

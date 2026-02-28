@@ -47,6 +47,8 @@ struct Stage3_SunlightView: View {
     @State private var showSymbolRef = false
     @State private var isEvaluating = false
     @State private var result: StageScore? = nil
+    @State private var isLoadingHints = false
+    @State private var fmRedundantIndices: Set<Int> = []
 
     // Phase tracking
     private var phase1Done: Bool { struckIndices.count >= 5 }
@@ -110,7 +112,7 @@ struct Stage3_SunlightView: View {
                 // PHASE 1: Word removal
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("Phase 1: Remove Redundant Words")
+                        Text("Phase 1: Remove Redundant and Unrequired tokens")
                             .font(.headline)
                         Spacer()
                         if phase1Done {
@@ -125,13 +127,21 @@ struct Stage3_SunlightView: View {
                 wordGrid
 
                 Button {
-                    withAnimation { showHints.toggle() }
+                    if showHints {
+                        withAnimation { showHints = false }
+                    } else {
+                        Task { await loadFMRedundantWords() }
+                    }
                 } label: {
-                    Label(showHints ? "Hide redundant words" : "Show redundant words",
-                          systemImage: showHints ? "eye.slash" : "eye")
-                        .font(.caption)
+                    HStack(spacing: 4) {
+                        if isLoadingHints { ProgressView().controlSize(.small) }
+                        Label(showHints ? "Hide redundant words" : "Show redundant words",
+                              systemImage: showHints ? "eye.slash" : "eye")
+                            .font(.caption)
+                    }
                 }
                 .buttonStyle(.bordered)
+                .disabled(isLoadingHints)
 
                 // Token counter
                 tokenCounter
@@ -163,8 +173,14 @@ struct Stage3_SunlightView: View {
 
                 // Single editable Final Compressed Prompt
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Final Compressed Prompt")
-                        .font(.subheadline.weight(.medium))
+                    HStack {
+                        Text("Final Compressed Prompt")
+                            .font(.subheadline.weight(.medium))
+                        Spacer()
+                        Image(systemName: "square.and.pencil")
+                            .font(.subheadline)
+                            .foregroundStyle(.green)
+                    }
 
                     TextEditor(text: $compressedText)
                         .font(.callout.monospaced())
@@ -196,7 +212,7 @@ struct Stage3_SunlightView: View {
                     }
                 }
 
-                evaluateButton
+                if !struckIndices.isEmpty { evaluateButton }
 
                 if let result = result {
                     EvaluationResultView(
@@ -209,6 +225,7 @@ struct Stage3_SunlightView: View {
             }
             .padding(24)
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Sunlight — Efficiency")
         .onAppear {
             if compressedText.isEmpty {
@@ -245,7 +262,7 @@ struct Stage3_SunlightView: View {
 
     private func wordButton(idx: Int, word: String) -> some View {
         let isStruck = struckIndices.contains(idx)
-        let isRedundant = showHints && redundantIndices.contains(idx)
+        let isRedundant = showHints && fmRedundantIndices.contains(idx)
         let bgColor: Color = isStruck ? .red.opacity(0.06) : isRedundant ? .orange.opacity(0.06) : Color(.secondarySystemFill)
         let borderColor: Color = isStruck ? .red.opacity(0.3) : isRedundant ? .orange.opacity(0.3) : .clear
         let textColor: Color = isStruck ? .secondary : isRedundant ? .orange : .primary
@@ -348,6 +365,45 @@ struct Stage3_SunlightView: View {
     }
 
 
+    // Foundation Model judges which words are redundant
+    private func loadFMRedundantWords() async {
+        isLoadingHints = true
+        var indices: Set<Int> = []
+
+        if #available(iOS 26, *) {
+            do {
+                let session = LanguageModelSession()
+                let numberedWords = words.enumerated().map { "\($0.offset):\($0.element)" }.joined(separator: ", ")
+                let prompt = """
+                Here is a prompt split into numbered words: \(numberedWords)
+                Identify which word indices are redundant, filler, or can be removed without losing core meaning.
+                Respond with ONLY a JSON array of integer indices, e.g. [2,5,8,12].
+                """
+                let response = try await session.respond(to: prompt)
+                let text = response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                // Extract JSON array from response
+                if let start = text.firstIndex(of: "["),
+                   let end = text.lastIndex(of: "]") {
+                    let jsonStr = String(text[start...end])
+                    if let data = jsonStr.data(using: .utf8),
+                       let arr = try? JSONSerialization.jsonObject(with: data) as? [Int] {
+                        indices = Set(arr)
+                    }
+                }
+            } catch { }
+        }
+
+        // Fallback to static indices if FM returned nothing
+        if indices.isEmpty {
+            indices = Set(redundantIndices)
+        }
+
+        await MainActor.run {
+            fmRedundantIndices = indices
+            withAnimation { showHints = true }
+            isLoadingHints = false
+        }
+    }
 
     private var evaluateButton: some View {
         Button {

@@ -17,6 +17,7 @@ struct Stage2_WaterView: View {
     @State private var items: [ReorderItem] = []
     @State private var isEvaluating = false
     @State private var result: StageScore? = nil
+    @State private var userHasReordered = false
 
     private var assembledPrompt: String {
         items.map(\.text).joined(separator: " ") + "."
@@ -75,7 +76,7 @@ struct Stage2_WaterView: View {
                 // Preview — shows user's current arrangement
                 promptPreview
 
-                if items.count == 5 { evaluateButton }
+                if items.count == 5, userHasReordered { evaluateButton }
 
                 if let result = result {
                     EvaluationResultView(
@@ -88,6 +89,7 @@ struct Stage2_WaterView: View {
             }
             .padding(24)
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Water — Structure")
         .onAppear { if items.isEmpty { items = Curriculum.stage2Items.shuffled() } }
     }
@@ -185,6 +187,7 @@ struct Stage2_WaterView: View {
         guard newIndex >= 0 && newIndex < items.count else { return }
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
             items.swapAt(index, newIndex)
+            userHasReordered = true
         }
     }
 

@@ -75,6 +75,7 @@ struct Stage1_AirView: View {
             }
             .padding(24)
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Air — Clarity")
         .onAppear {
             if shuffledBlocks.isEmpty {
@@ -145,7 +146,6 @@ struct Stage1_AirView: View {
                 Text(block.text)
                     .font(.subheadline)
                     .foregroundStyle(isPlaced ? .tertiary : isRejected ? .secondary : .primary)
-                    .strikethrough(isRejected, color: .red)
 
                 Spacer()
 

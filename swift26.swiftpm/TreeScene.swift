@@ -123,11 +123,13 @@ class TreeScene: SKScene, ObservableObject {
 
         drawCanopyTiles(centerX: centerX, centerY: centerY, colors: wiltedColors, name: "canopy_tile")
 
-        // Fog overlay — dense fog before Air stage clears it
+        // Fog overlay — oscillating multi-grey fog
+        let greys: [CGFloat] = [0.65, 0.72, 0.78, 0.85, 0.90, 0.95]
         // Layer 1: small scattered fog tiles
         for _ in 0..<80 {
+            let g = greys[Int.random(in: 0..<greys.count)]
             let fogTile = SKSpriteNode(
-                color: SKColor(white: 0.85, alpha: 0.4),
+                color: SKColor(white: g, alpha: CGFloat.random(in: 0.3...0.5)),
                 size: CGSize(width: tileSize * 2, height: tileSize * 2)
             )
             fogTile.position = CGPoint(
@@ -137,11 +139,18 @@ class TreeScene: SKScene, ObservableObject {
             fogTile.zPosition = 50
             fogTile.name = "fog_tile"
             addChild(fogTile)
+            // Oscillate
+            let drift = SKAction.sequence([
+                SKAction.moveBy(x: CGFloat.random(in: -20...20), y: CGFloat.random(in: -10...10), duration: Double.random(in: 2...4)),
+                SKAction.moveBy(x: CGFloat.random(in: -20...20), y: CGFloat.random(in: -10...10), duration: Double.random(in: 2...4)),
+            ])
+            fogTile.run(SKAction.repeatForever(drift))
         }
         // Layer 2: larger, denser fog patches
         for _ in 0..<50 {
+            let g = greys[Int.random(in: 0..<greys.count)]
             let fogTile = SKSpriteNode(
-                color: SKColor(white: 0.80, alpha: 0.5),
+                color: SKColor(white: g, alpha: CGFloat.random(in: 0.4...0.6)),
                 size: CGSize(width: tileSize * CGFloat.random(in: 3...5), height: tileSize * CGFloat.random(in: 3...4))
             )
             fogTile.position = CGPoint(
@@ -151,11 +160,17 @@ class TreeScene: SKScene, ObservableObject {
             fogTile.zPosition = 51
             fogTile.name = "fog_tile"
             addChild(fogTile)
+            let drift = SKAction.sequence([
+                SKAction.moveBy(x: CGFloat.random(in: -30...30), y: CGFloat.random(in: -15...15), duration: Double.random(in: 3...5)),
+                SKAction.moveBy(x: CGFloat.random(in: -30...30), y: CGFloat.random(in: -15...15), duration: Double.random(in: 3...5)),
+            ])
+            fogTile.run(SKAction.repeatForever(drift))
         }
         // Layer 3: thick fog band across the middle
         for _ in 0..<40 {
+            let g = greys[Int.random(in: 0..<greys.count)]
             let fogTile = SKSpriteNode(
-                color: SKColor(white: 0.90, alpha: 0.6),
+                color: SKColor(white: g, alpha: CGFloat.random(in: 0.5...0.7)),
                 size: CGSize(width: tileSize * CGFloat.random(in: 4...8), height: tileSize * CGFloat.random(in: 2...4))
             )
             fogTile.position = CGPoint(
@@ -165,7 +180,63 @@ class TreeScene: SKScene, ObservableObject {
             fogTile.zPosition = 52
             fogTile.name = "fog_tile"
             addChild(fogTile)
+            let drift = SKAction.sequence([
+                SKAction.moveBy(x: CGFloat.random(in: -25...25), y: CGFloat.random(in: -12...12), duration: Double.random(in: 2.5...4.5)),
+                SKAction.moveBy(x: CGFloat.random(in: -25...25), y: CGFloat.random(in: -12...12), duration: Double.random(in: 2.5...4.5)),
+            ])
+            fogTile.run(SKAction.repeatForever(drift))
         }
+
+        // Golden shimmer tracing tree outline
+        let shimCenterX = size.width / 2
+        var outlinePoints: [CGPoint] = []
+        // Left trunk edge
+        for row in stride(from: CGFloat(75), to: CGFloat(280), by: tileSize) {
+            let trunkW: CGFloat = row > 240 ? 2 : row > 200 ? 3 : 4
+            outlinePoints.append(CGPoint(x: shimCenterX - (trunkW * tileSize / 2), y: row))
+        }
+        // Canopy outline
+        let canopySteps = 50
+        for i in 0..<canopySteps {
+            let angle = (.pi / 2) + (CGFloat(i) / CGFloat(canopySteps)) * 2 * .pi
+            let r: CGFloat = 105
+            outlinePoints.append(CGPoint(
+                x: shimCenterX + cos(angle) * r,
+                y: 350 + sin(angle) * r * 0.8
+            ))
+        }
+        // Right trunk edge
+        for row in stride(from: CGFloat(275), through: CGFloat(75), by: -tileSize) {
+            let trunkW: CGFloat = row > 240 ? 2 : row > 200 ? 3 : 4
+            outlinePoints.append(CGPoint(x: shimCenterX + (trunkW * tileSize / 2), y: row))
+        }
+
+        let goldenColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 0.9)
+        let totalPts = outlinePoints.count
+        let lineLen = 10
+        var shimmerStep = 0
+        let advanceShimmer = SKAction.run { [weak self] in
+            guard let self else { return }
+            for j in 0..<lineLen {
+                let idx = (shimmerStep + j) % totalPts
+                let pt = outlinePoints[idx]
+                let brightness = 1.0 - (CGFloat(j) / CGFloat(lineLen)) * 0.7
+                let tile = SKSpriteNode(
+                    color: goldenColor,
+                    size: CGSize(width: self.tileSize * 0.7, height: self.tileSize * 0.7)
+                )
+                tile.position = pt
+                tile.zPosition = 55
+                tile.alpha = brightness
+                self.addChild(tile)
+                tile.run(SKAction.sequence([
+                    SKAction.fadeOut(withDuration: 0.12),
+                    SKAction.removeFromParent(),
+                ]))
+            }
+            shimmerStep = (shimmerStep + 1) % totalPts
+        }
+        run(SKAction.repeatForever(SKAction.sequence([advanceShimmer, SKAction.wait(forDuration: 0.04)])), withKey: "intro_shimmer")
     }
 
     private func drawCanopyTiles(centerX: CGFloat, centerY: CGFloat, colors: [SKColor], name: String) {
@@ -207,8 +278,11 @@ class TreeScene: SKScene, ObservableObject {
         }
     }
 
-    // Stage 1: Air — fog clears, canopy begins to lighten
+    // Stage 1: Air — fog clears, shimmer stops, canopy begins to lighten
     private func animateAir() {
+        // Stop intro shimmer
+        removeAction(forKey: "intro_shimmer")
+
         // Fade out fog tiles
         enumerateChildNodes(withName: "fog_tile") { node, _ in
             node.run(SKAction.sequence([
@@ -560,9 +634,9 @@ class TreeScene: SKScene, ObservableObject {
         addChild(emitterNode)
         emitterNode.run(nutrientAction)
 
-        // Stop all flows (water + nutrients) after 2 minutes
+        // Stop all flows (water + nutrients) after 1.5 minutes
         run(SKAction.sequence([
-            SKAction.wait(forDuration: 120),
+            SKAction.wait(forDuration: 90),
             SKAction.run { [weak self] in
                 self?.removeAction(forKey: "water_xylem")
                 self?.removeAction(forKey: "water_absorb")
@@ -604,62 +678,109 @@ class TreeScene: SKScene, ObservableObject {
             glowTile.run(SKAction.repeatForever(pulse))
         }
 
-        // Shimmer: single continuous line from left trunk → canopy → right trunk
-        var outlinePoints: [CGPoint] = []
+        // Full tree glow — small golden pixels
+        let goldenGlow = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)
 
-        // 1. Left trunk edge — bottom to top
-        for row in stride(from: CGFloat(75), to: CGFloat(280), by: tileSize) {
-            let trunkW: CGFloat = row > 240 ? 2 : row > 200 ? 3 : 4
-            outlinePoints.append(CGPoint(x: centerX - (trunkW * tileSize / 2), y: row))
+        // Elliptical golden glow around canopy
+        for i in 0..<25 {
+            let angle = (CGFloat(i) / 25.0) * 2 * .pi
+            let rx: CGFloat = 130
+            let ry: CGFloat = 105
+            let glowSpot = SKSpriteNode(
+                color: goldenGlow,
+                size: CGSize(width: tileSize * 1.5, height: tileSize * 1.5)
+            )
+            glowSpot.position = CGPoint(
+                x: centerX + cos(angle) * rx,
+                y: 350 + sin(angle) * ry * 0.8
+            )
+            glowSpot.zPosition = 3
+            glowSpot.alpha = 0
+            addChild(glowSpot)
+            glowSpot.run(SKAction.sequence([
+                SKAction.wait(forDuration: 1.0 + Double(i) * 0.04),
+                SKAction.fadeAlpha(to: 0.3, duration: 0.8),
+                SKAction.repeatForever(SKAction.sequence([
+                    SKAction.fadeAlpha(to: 0.45, duration: 1.5),
+                    SKAction.fadeAlpha(to: 0.15, duration: 1.5),
+                ])),
+            ]))
         }
-        // 2. Canopy outline — left side up and over to right side
-        let canopySteps = 50
-        for i in 0..<canopySteps {
-            let angle = (.pi / 2) + (CGFloat(i) / CGFloat(canopySteps)) * 2 * .pi
-            let r: CGFloat = 105
-            outlinePoints.append(CGPoint(
-                x: centerX + cos(angle) * r,
-                y: 350 + sin(angle) * r * 0.8
-            ))
-        }
-        // 3. Right trunk edge — top to bottom
-        for row in stride(from: CGFloat(275), through: CGFloat(75), by: -tileSize) {
-            let trunkW: CGFloat = row > 240 ? 2 : row > 200 ? 3 : 4
-            outlinePoints.append(CGPoint(x: centerX + (trunkW * tileSize / 2), y: row))
+        // Inner golden fill
+        for i in 0..<12 {
+            let angle = (CGFloat(i) / 12.0) * 2 * .pi
+            let innerGlow = SKSpriteNode(
+                color: goldenGlow,
+                size: CGSize(width: tileSize * 1.2, height: tileSize * 1.2)
+            )
+            innerGlow.position = CGPoint(
+                x: centerX + cos(angle) * 65,
+                y: 350 + sin(angle) * 50
+            )
+            innerGlow.zPosition = 3
+            innerGlow.alpha = 0
+            addChild(innerGlow)
+            innerGlow.run(SKAction.sequence([
+                SKAction.wait(forDuration: 1.3),
+                SKAction.fadeAlpha(to: 0.25, duration: 0.8),
+                SKAction.repeatForever(SKAction.sequence([
+                    SKAction.fadeAlpha(to: 0.35, duration: 1.2),
+                    SKAction.fadeAlpha(to: 0.12, duration: 1.2),
+                ])),
+            ]))
         }
 
-        let shimmerColor = SKColor(white: 1.0, alpha: 0.9)
-        let totalPts = outlinePoints.count
-        let lineLen = 10
-
-        // Single shimmer line traveling along the path
-        var shimmerStep = 0
-        let advanceShimmer = SKAction.run { [weak self] in
-            guard let self else { return }
-            for j in 0..<lineLen {
-                let idx = (shimmerStep + j) % totalPts
-                let pt = outlinePoints[idx]
-                let brightness = 1.0 - (CGFloat(j) / CGFloat(lineLen)) * 0.7
-                let tile = SKSpriteNode(
-                    color: shimmerColor,
-                    size: CGSize(width: self.tileSize * 0.7, height: self.tileSize * 0.7)
+        // Trunk golden glow — small tiles along edges
+        for row in stride(from: CGFloat(80), to: CGFloat(275), by: tileSize * 2) {
+            for side in [-1.0, 1.0] as [CGFloat] {
+                let trunkW: CGFloat = row > 240 ? 2 : row > 200 ? 3 : 4
+                let tGlow = SKSpriteNode(
+                    color: goldenGlow,
+                    size: CGSize(width: tileSize, height: tileSize)
                 )
-                tile.position = pt
-                tile.zPosition = 22
-                tile.alpha = brightness
-                self.addChild(tile)
-                tile.run(SKAction.sequence([
-                    SKAction.fadeOut(withDuration: 0.12),
-                    SKAction.removeFromParent(),
+                tGlow.position = CGPoint(
+                    x: centerX + side * (trunkW * tileSize / 2 + tileSize * 0.5),
+                    y: row
+                )
+                tGlow.zPosition = 3
+                tGlow.alpha = 0
+                addChild(tGlow)
+                tGlow.run(SKAction.sequence([
+                    SKAction.wait(forDuration: 1.0),
+                    SKAction.fadeAlpha(to: 0.25, duration: 0.8),
+                    SKAction.repeatForever(SKAction.sequence([
+                        SKAction.fadeAlpha(to: 0.35, duration: 1.5),
+                        SKAction.fadeAlpha(to: 0.1, duration: 1.5),
+                    ])),
                 ]))
             }
-            shimmerStep = (shimmerStep + 1) % totalPts
         }
-        run(SKAction.sequence([
-            SKAction.wait(forDuration: 3.0),
-            SKAction.repeatForever(SKAction.sequence([advanceShimmer, SKAction.wait(forDuration: 0.04)])),
-        ]))
 
+        // Brighten all canopy tiles with a visible pulse
+        enumerateChildNodes(withName: "canopy_tile") { node, _ in
+            if let sprite = node as? SKSpriteNode {
+                sprite.run(SKAction.sequence([
+                    SKAction.wait(forDuration: 1.5 + Double.random(in: 0...0.5)),
+                    SKAction.repeatForever(SKAction.sequence([
+                        SKAction.fadeAlpha(to: 1.0, duration: 0.8),
+                        SKAction.fadeAlpha(to: 0.7, duration: 0.8),
+                    ])),
+                ]))
+            }
+        }
+
+        // Root glow pulse
+        enumerateChildNodes(withName: "root_tile") { node, _ in
+            if let sprite = node as? SKSpriteNode {
+                sprite.run(SKAction.sequence([
+                    SKAction.wait(forDuration: 2.0),
+                    SKAction.repeatForever(SKAction.sequence([
+                        SKAction.fadeAlpha(to: 1.0, duration: 1.2),
+                        SKAction.fadeAlpha(to: 0.6, duration: 1.2),
+                    ])),
+                ]))
+            }
+        }
         // Banner
         let banner = SKLabelNode(text: "Prompt Tree Restored")
         banner.fontSize = 16

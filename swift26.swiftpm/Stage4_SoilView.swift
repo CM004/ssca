@@ -153,6 +153,7 @@ struct Stage4_SoilView: View {
             }
             .padding(24)
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Soil — Context")
     }
 

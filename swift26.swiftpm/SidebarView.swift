@@ -19,49 +19,68 @@ struct SidebarView: View {
                 appState.goToStage(0)
             } label: {
                 Label("Introduction", systemImage: "info.circle")
+                    .foregroundStyle(.white.opacity(0.9))
             }
             .listRowBackground(rowBG(active: appState.currentStage == 0))
 
             // Stages
-            Section("Stages") {
+            Section {
                 stageRow(id: 1, icon: "wind", title: "Air (Clarity)")
                 stageRow(id: 2, icon: "drop.fill", title: "Water (Structure)")
                 stageRow(id: 3, icon: "sun.max.fill", title: "Sunlight (Efficiency)")
                 stageRow(id: 4, icon: "leaf.fill", title: "Soil (Context)")
                 stageRow(id: 5, icon: "shield.fill", title: "Nutrients (Safety)")
+            } header: {
+                Text("Stages").foregroundStyle(.green.opacity(0.7))
             }
 
             // Dashboard
-            Section("Results") {
+            Section {
                 Button {
                     if appState.isAllComplete { appState.goToStage(6) }
                 } label: {
                     HStack {
                         Label("Dashboard", systemImage: "chart.bar.fill")
+                            .foregroundStyle(.white.opacity(0.9))
                         Spacer()
                         if !appState.isAllComplete {
                             Image(systemName: "lock.fill")
                                 .font(.caption2)
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(.green.opacity(0.3))
                         }
                     }
                 }
                 .disabled(!appState.isAllComplete)
                 .listRowBackground(rowBG(active: appState.currentStage == 6))
+            } header: {
+                Text("Results").foregroundStyle(.green.opacity(0.7))
             }
 
             // Domain
-            Section("Domain") {
+            Section {
                 Picker("Select Domain :", selection: $appState.selectedDomain) {
                     ForEach(["Education", "Health", "Legal", "Finance", "Support"], id: \.self) { (domain: String) in
                         Text(domain).tag(domain)
                     }
                 }
                 .pickerStyle(.menu)
+                .tint(.green)
+            } header: {
+                Text("Domain").foregroundStyle(.green.opacity(0.7))
             }
         }
         .navigationTitle("SamvaadFlow")
         .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(red: 0.02, green: 0.08, blue: 0.04),
+                    Color(red: 0.04, green: 0.10, blue: 0.05),
+                ],
+                startPoint: .top, endPoint: .bottom
+            )
+        )
     }
 
     // MARK: - Active row background (light blue capsule)
@@ -69,7 +88,8 @@ struct SidebarView: View {
     @ViewBuilder
     private func rowBG(active: Bool) -> some View {
         if active {
-            Capsule().fill(Color.blue.opacity(0.12))
+            Capsule().fill(Color.green.opacity(0.15))
+                .overlay(Capsule().stroke(Color.green.opacity(0.25), lineWidth: 0.5))
         } else {
             Color.clear
         }

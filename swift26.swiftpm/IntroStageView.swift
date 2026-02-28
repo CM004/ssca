@@ -17,37 +17,44 @@ struct IntroStageView: View {
 
                 Text("SamvaadFlow")
                     .font(.largeTitle.weight(.bold))
+                    .foregroundStyle(.white)
                     .padding(.top, 8)
 
                 Text("This tree can talk with AI but glowing tree is flickering becuase the communication is not strong. It lacks the essential elements needed to survive.")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.6))
 
                 Text("Each missing element represents one fundamental rule of writing prompts that AI can actually use well to understand and respond to.")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.6))
 
                 Text("Your job: restore the glowing tree — one element at a time.")
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.green)
 
-                Divider()
+                Divider().overlay(Color.green.opacity(0.2))
 
                 // Starting prompt
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Your Starting Prompt")
                         .font(.headline)
+                        .foregroundStyle(.green.opacity(0.9))
 
                     Text(Curriculum.startingPrompt)
                         .font(.body.monospaced())
                         .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 8))
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.green.opacity(0.2), lineWidth: 0.5)
+                        )
 
                     HStack {
                         Label("\(Curriculum.startingTokens) tokens", systemImage: "number")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(.green.opacity(0.7))
 
                         Spacer()
 
@@ -57,7 +64,7 @@ struct IntroStageView: View {
 
                 Text("This prompt will travel through all 5 stages. Each stage will fix one broken element.")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.5))
                     .italic()
 
                 Button {
@@ -73,6 +80,7 @@ struct IntroStageView: View {
             }
             .padding(24)
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Introduction")
     }
 }

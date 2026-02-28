@@ -172,7 +172,7 @@ struct Stage5_NutrientsView: View {
                     }
 
                     HStack {
-                        Text("\(correctlyRedacted)/\(piiCount) PII items found")
+                        Text("\(correctlyRedacted)/\(piiCount) personal information items found")
                             .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                         if falsePositives > 0 {
                             Text("• \(falsePositives) false positive\(falsePositives == 1 ? "" : "s")")
@@ -204,8 +204,8 @@ struct Stage5_NutrientsView: View {
                     finalPromptPreview
                 }
 
-                // Evaluate
-                if correctlyRedacted >= piiCount && constraints.contains(where: { $0.isOn }) {
+                // Evaluate — shows once PII items are found (constraints optional)
+                if correctlyRedacted >= piiCount {
                     evaluateButton
                 }
 
@@ -220,6 +220,7 @@ struct Stage5_NutrientsView: View {
             }
             .padding(24)
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Nutrients — Safety")
         .onAppear {
             if shuffledItems.isEmpty {
@@ -321,6 +322,8 @@ struct Stage5_NutrientsView: View {
 
     private func evaluate() async {
         isEvaluating = true
+        // Start nutrient flow animation immediately
+        appState.completedStages.insert(5)
         let hasWordLimit = constraints.first { $0.label.contains("150") }?.isOn ?? false
         let activeConstraints = constraints.filter(\.isOn).count
         let noFalsePositives = falsePositives == 0
