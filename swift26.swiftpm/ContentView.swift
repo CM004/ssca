@@ -20,18 +20,8 @@ struct ContentView: View {
         } content: {
             centerPanel
         } detail: {
-            VStack(spacing: 0) {
-                Text("Live Preview")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
-
-                Divider()
-
-                SpriteView(scene: treeScene)
-                    .ignoresSafeArea(edges: .bottom)
-            }
+            SpriteView(scene: treeScene)
+                .ignoresSafeArea()
         }
         .navigationSplitViewStyle(.balanced)
         .environmentObject(appState)

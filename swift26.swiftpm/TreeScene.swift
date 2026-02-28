@@ -604,6 +604,62 @@ class TreeScene: SKScene, ObservableObject {
             glowTile.run(SKAction.repeatForever(pulse))
         }
 
+        // Shimmer: single continuous line from left trunk → canopy → right trunk
+        var outlinePoints: [CGPoint] = []
+
+        // 1. Left trunk edge — bottom to top
+        for row in stride(from: CGFloat(75), to: CGFloat(280), by: tileSize) {
+            let trunkW: CGFloat = row > 240 ? 2 : row > 200 ? 3 : 4
+            outlinePoints.append(CGPoint(x: centerX - (trunkW * tileSize / 2), y: row))
+        }
+        // 2. Canopy outline — left side up and over to right side
+        let canopySteps = 50
+        for i in 0..<canopySteps {
+            let angle = (.pi / 2) + (CGFloat(i) / CGFloat(canopySteps)) * 2 * .pi
+            let r: CGFloat = 105
+            outlinePoints.append(CGPoint(
+                x: centerX + cos(angle) * r,
+                y: 350 + sin(angle) * r * 0.8
+            ))
+        }
+        // 3. Right trunk edge — top to bottom
+        for row in stride(from: CGFloat(275), through: CGFloat(75), by: -tileSize) {
+            let trunkW: CGFloat = row > 240 ? 2 : row > 200 ? 3 : 4
+            outlinePoints.append(CGPoint(x: centerX + (trunkW * tileSize / 2), y: row))
+        }
+
+        let shimmerColor = SKColor(white: 1.0, alpha: 0.9)
+        let totalPts = outlinePoints.count
+        let lineLen = 10
+
+        // Single shimmer line traveling along the path
+        var shimmerStep = 0
+        let advanceShimmer = SKAction.run { [weak self] in
+            guard let self else { return }
+            for j in 0..<lineLen {
+                let idx = (shimmerStep + j) % totalPts
+                let pt = outlinePoints[idx]
+                let brightness = 1.0 - (CGFloat(j) / CGFloat(lineLen)) * 0.7
+                let tile = SKSpriteNode(
+                    color: shimmerColor,
+                    size: CGSize(width: self.tileSize * 0.7, height: self.tileSize * 0.7)
+                )
+                tile.position = pt
+                tile.zPosition = 22
+                tile.alpha = brightness
+                self.addChild(tile)
+                tile.run(SKAction.sequence([
+                    SKAction.fadeOut(withDuration: 0.12),
+                    SKAction.removeFromParent(),
+                ]))
+            }
+            shimmerStep = (shimmerStep + 1) % totalPts
+        }
+        run(SKAction.sequence([
+            SKAction.wait(forDuration: 3.0),
+            SKAction.repeatForever(SKAction.sequence([advanceShimmer, SKAction.wait(forDuration: 0.04)])),
+        ]))
+
         // Banner
         let banner = SKLabelNode(text: "Prompt Tree Restored")
         banner.fontSize = 16
