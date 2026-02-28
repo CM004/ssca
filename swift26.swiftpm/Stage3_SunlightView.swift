@@ -50,6 +50,7 @@ struct Stage3_SunlightView: View {
     @State private var result: StageScore? = nil
     @State private var isLoadingHints = false
     @State private var fmRedundantIndices: Set<Int> = []
+    @State private var showConfetti = false
 
     // Phase tracking
     private var phase1Done: Bool { struckIndices.count >= 5 }
@@ -225,6 +226,21 @@ struct Stage3_SunlightView: View {
                 }
             }
             .padding(24)
+        }
+        .overlay {
+            if showConfetti {
+                ConfettiView()
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+            }
+        }
+        .onChange(of: result != nil) { _, hasResult in
+            if hasResult {
+                showConfetti = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    withAnimation { showConfetti = false }
+                }
+            }
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Sunlight — Efficiency")

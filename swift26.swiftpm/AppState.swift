@@ -65,8 +65,8 @@ final class AppState: ObservableObject {
     }
 
     func goToStage(_ stage: Int) {
-        // Always allow Intro (0) and About (7)
-        if stage == 0 || stage == 7 {
+        // Always allow Intro (0), About (7), Prompt Rain (8), Practice (9)
+        if stage == 0 || stage == 7 || stage == 8 || stage == 9 {
             currentStage = stage
             return
         }
@@ -87,7 +87,7 @@ final class AppState: ObservableObject {
     }
 
     func isStageUnlocked(_ stage: Int) -> Bool {
-        if stage == 0 || stage == 7 { return true }
+        if stage == 0 || stage == 7 || stage == 8 || stage == 9 { return true }
         if stage == 6 { return isAllComplete }
         let nextUnlocked = (completedStages.max() ?? 0) + 1
         return completedStages.contains(stage) || stage <= nextUnlocked

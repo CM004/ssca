@@ -21,6 +21,7 @@ struct Stage1_AirView: View {
     @State private var result: StageScore? = nil
     @State private var shuffledBlocks: [DragBlock] = []
     @State private var rejectedBlocks: Set<UUID> = []
+    @State private var showConfetti = false
 
     private var assembledPrompt: String {
         var parts: [String] = []
@@ -74,6 +75,21 @@ struct Stage1_AirView: View {
                 }
             }
             .padding(24)
+        }
+        .overlay {
+            if showConfetti {
+                ConfettiView()
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+            }
+        }
+        .onChange(of: result != nil) { _, hasResult in
+            if hasResult {
+                showConfetti = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    withAnimation { showConfetti = false }
+                }
+            }
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Air — Clarity")

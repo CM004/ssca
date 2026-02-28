@@ -27,6 +27,7 @@ struct Stage5_NutrientsView: View {
     @State private var constraints: [(label: String, isOn: Bool)] = Curriculum.stage5Constraints.map { ($0.label, $0.defaultOn) }
     @State private var isEvaluating = false
     @State private var result: StageScore? = nil
+    @State private var showConfetti = false
     @State private var showConstraintBuilder = false
     @State private var wrongSelections: Set<UUID> = []
 
@@ -216,6 +217,21 @@ struct Stage5_NutrientsView: View {
                 }
             }
             .padding(24)
+        }
+        .overlay {
+            if showConfetti {
+                ConfettiView()
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+            }
+        }
+        .onChange(of: result != nil) { _, hasResult in
+            if hasResult {
+                showConfetti = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    withAnimation { showConfetti = false }
+                }
+            }
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Nutrients — Safety")

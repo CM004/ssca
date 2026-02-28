@@ -69,6 +69,26 @@ struct SidebarView: View {
                 Text("Domain").foregroundStyle(.green.opacity(0.7))
             }
 
+            // Game
+            Section {
+                Button {
+                    appState.goToStage(8)
+                } label: {
+                    Label("Prompt Rain", systemImage: "cloud.rain.fill")
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+                .listRowBackground(rowBG(active: appState.currentStage == 8))
+                Button {
+                    appState.goToStage(9)
+                } label: {
+                    Label("Practice", systemImage: "pencil.and.outline")
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+                .listRowBackground(rowBG(active: appState.currentStage == 9))
+            } header: {
+                Text("Game").foregroundStyle(.green.opacity(0.7))
+            }
+
             // About
             Section {
                 Button {

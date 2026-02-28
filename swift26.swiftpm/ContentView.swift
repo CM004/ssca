@@ -63,6 +63,10 @@ struct ContentView: View {
             DashboardView()
         case 7:
             AboutView()
+        case 8:
+            PromptRainView()
+        case 9:
+            PracticeView()
         default:
             Text("Unknown stage")
         }

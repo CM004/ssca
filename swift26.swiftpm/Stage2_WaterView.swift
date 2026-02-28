@@ -18,6 +18,7 @@ struct Stage2_WaterView: View {
     @State private var isEvaluating = false
     @State private var result: StageScore? = nil
     @State private var userHasReordered = false
+    @State private var showConfetti = false
 
     private var assembledPrompt: String {
         items.map(\.text).joined(separator: " ") + "."
@@ -88,6 +89,21 @@ struct Stage2_WaterView: View {
                 }
             }
             .padding(24)
+        }
+        .overlay {
+            if showConfetti {
+                ConfettiView()
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+            }
+        }
+        .onChange(of: result != nil) { _, hasResult in
+            if hasResult {
+                showConfetti = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    withAnimation { showConfetti = false }
+                }
+            }
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Water — Structure")
