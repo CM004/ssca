@@ -210,7 +210,7 @@ struct DashboardView: View {
                 VStack(spacing: 6) {
                     Text("You didn't just write a better prompt.")
                         .font(.headline)
-                    Text("You used AI more sustainably. 🌳")
+                    Text("You used AI more sustainably.")
                         .font(.headline)
                         .foregroundStyle(.green)
                 }

@@ -126,7 +126,7 @@ struct Stage4_SoilView: View {
                     Image(systemName: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("More context = more tokens = more accurate responses")
+                        Text("More context costs more tokens, But brings more accurate responses")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.orange)
                         Text("Each example and thinking style adds tokens. Balance accuracy with cost.")

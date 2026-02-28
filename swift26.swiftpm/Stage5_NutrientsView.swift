@@ -139,7 +139,7 @@ struct Stage5_NutrientsView: View {
 
                 // Narrative
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Oops! Julie added sensitive info to the prompt.")
+                    Text("Oops! Someone added sensitive info to the prompt.")
                         .font(.headline)
                     Text("The prompt from Stage 4 now contains personal data that should never be sent to an AI. Find and remove it.")
                         .font(.caption).foregroundStyle(.secondary)
