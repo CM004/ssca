@@ -16,6 +16,14 @@ struct PromptFragment {
     let emoji: String
 }
 
+struct GameScenario {
+    let title: String
+    let targetPrompt: String
+    let goodFragments: [PromptFragment]
+    let toxicFragments: [PromptFragment]
+    let requiredParts: Int
+}
+
 enum FragmentCategory: String {
     case role, task, audience, context, constraint, output
     case pii, filler, vague
@@ -55,13 +63,25 @@ class PromptRainScene: SKScene, ObservableObject {
     @Published var score: Int = 0
     @Published var caughtFragments: [PromptFragment] = []
     @Published var missedCategories: [String] = []
+    @Published var uniquePartsCaught: Int = 0
     @Published var isGameOver = false
-    @Published var roundNumber: Int = 1
+    @Published var goodCaughtCount: Int = 0
+    @Published var badCaughtCount: Int = 0
     @Published var timeRemaining: Double = 45
     @Published var fmEvaluation: String? = nil
+    @Published var currentTargetPrompt: String = ""
+
+    private let targetPrompts: [String] = [
+        "Role: scientist.\nExplain causes for high schoolers\n→ bullet points.",
+        "Role: therapist.\nSummarize coping strategies for teens\nunder 100 words → numbered list.",
+        "Role: legal advisor.\nDraft a summary for a small business owner.\nIndia jurisdiction only. plain English.",
+        "Role: UX Researcher.\nDesign a survey for mobile users\nfocus on accessibility → tabular format.",
+        "Role: Senior Data Analyst.\nSummarize Q3 earnings report for executives\nunder 150 words → JSON format."
+    ]
 
     private var basket: SKSpriteNode!
     private var scoreLabel: SKLabelNode!
+    private var countsLabel: SKLabelNode!
     private var timerLabel: SKLabelNode!
     private var lastSpawnTime: TimeInterval = 0
     private var gameTime: TimeInterval = 0
@@ -71,26 +91,30 @@ class PromptRainScene: SKScene, ObservableObject {
     private var gameStarted = false
 
     // Sequence bonus tracking
-    private var lastCaughtOrder: [FragmentCategory] = []
-    private let bonusSequence: [FragmentCategory] = [.role, .task, .audience]
-
+    // Scenario state
     // Fragment pools
     private let goodFragments: [PromptFragment] = [
-        PromptFragment(text: "@educator", category: .role, emoji: "🍎"),
-        PromptFragment(text: "@analyst", category: .role, emoji: "🍎"),
-        PromptFragment(text: "@doctor", category: .role, emoji: "🍎"),
-        PromptFragment(text: "summarize report", category: .task, emoji: "🍊"),
-        PromptFragment(text: "list key risks", category: .task, emoji: "🍊"),
-        PromptFragment(text: "explain concept", category: .task, emoji: "🍊"),
-        PromptFragment(text: "for students", category: .audience, emoji: "🍋"),
-        PromptFragment(text: "for clinicians", category: .audience, emoji: "🍋"),
-        PromptFragment(text: "for managers", category: .audience, emoji: "🍋"),
-        PromptFragment(text: "climate data 2024", category: .context, emoji: "🍏"),
-        PromptFragment(text: "patient history", category: .context, emoji: "🍏"),
-        PromptFragment(text: "max 100 words", category: .constraint, emoji: "🫐"),
-        PromptFragment(text: "no speculation", category: .constraint, emoji: "🫐"),
-        PromptFragment(text: "=> bullet list", category: .output, emoji: "🍇"),
-        PromptFragment(text: "=> JSON format", category: .output, emoji: "🍇"),
+        PromptFragment(text: "Role: Senior Data Analyst", category: .role, emoji: "🍎"),
+        PromptFragment(text: "Act as an Expert Educator", category: .role, emoji: "🍎"),
+        PromptFragment(text: "You are a UX Researcher", category: .role, emoji: "🍎"),
+        
+        PromptFragment(text: "Summarize the Q3 earnings report", category: .task, emoji: "🍊"),
+        PromptFragment(text: "Extract key risks from this text", category: .task, emoji: "🍊"),
+        PromptFragment(text: "Explain quantum computing simply", category: .task, emoji: "🍊"),
+        
+        PromptFragment(text: "Audience: High school students", category: .audience, emoji: "🍋"),
+        PromptFragment(text: "Target: Non-technical managers", category: .audience, emoji: "🍋"),
+        PromptFragment(text: "Readers: Medical professionals", category: .audience, emoji: "🍋"),
+        
+        PromptFragment(text: "Context: 2024 Climate Data attached", category: .context, emoji: "🍏"),
+        PromptFragment(text: "Given the patient's prior history", category: .context, emoji: "🍏"),
+        
+        PromptFragment(text: "Constraint: Under 150 words", category: .constraint, emoji: "🫐"),
+        PromptFragment(text: "Rule: No speculation or filler", category: .constraint, emoji: "🫐"),
+         PromptFragment(text: "Tone: Professional but approachable", category: .constraint, emoji: "🫐"),
+        
+        PromptFragment(text: "Output: A markdown bulleted list", category: .output, emoji: "🍇"),
+        PromptFragment(text: "Format response as strict JSON", category: .output, emoji: "🍇"),
     ]
 
     private let toxicFragments: [PromptFragment] = [
@@ -105,6 +129,7 @@ class PromptRainScene: SKScene, ObservableObject {
         PromptFragment(text: "tell me stuff", category: .vague, emoji: "🍂"),
     ]
 
+    // Fragment pools
     // MARK: - Setup
 
     override func didMove(to view: SKView) {
@@ -118,6 +143,7 @@ class PromptRainScene: SKScene, ObservableObject {
 
     private func setupFloor() {
         let floor = SKNode()
+        floor.name = "floor"
         floor.position = CGPoint(x: size.width / 2, y: -10)
         floor.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: size.width * 2, height: 20))
         floor.physicsBody?.isDynamic = false
@@ -146,15 +172,45 @@ class PromptRainScene: SKScene, ObservableObject {
         addChild(basket)
     }
 
+    override func didChangeSize(_ oldSize: CGSize) {
+        super.didChangeSize(oldSize)
+        // Keep HUD and floor nodes anchored correctly when window resizes
+        if let floor = childNode(withName: "floor") {
+            floor.position = CGPoint(x: size.width / 2, y: -10)
+            floor.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: size.width * 2, height: 20))
+            floor.physicsBody?.isDynamic = false
+        }
+        if let timer = timerLabel {
+            timer.position = CGPoint(x: size.width - 60, y: size.height - 30)
+        }
+
+        if let counts = countsLabel {
+            counts.position = CGPoint(x: size.width / 2, y: size.height - 35)
+        }
+        
+        if basket != nil {
+            basket.position.x = max(45, min(size.width - 45, basket.position.x))
+        }
+    }
+
     private func setupHUD() {
         scoreLabel = SKLabelNode(text: "Score: 0")
         scoreLabel.fontSize = 14
         scoreLabel.fontName = "Menlo-Bold"
         scoreLabel.fontColor = .white
-        scoreLabel.position = CGPoint(x: 60, y: size.height - 30)
+        scoreLabel.position = CGPoint(x: 20, y: size.height - 30)
         scoreLabel.zPosition = 100
         scoreLabel.horizontalAlignmentMode = .left
         addChild(scoreLabel)
+
+        countsLabel = SKLabelNode(text: "Good: 0 | Bad: 0")
+        countsLabel.fontSize = 14
+        countsLabel.fontName = "Menlo-Bold"
+        countsLabel.fontColor = SKColor(red: 0.8, green: 0.9, blue: 0.8, alpha: 1)
+        countsLabel.position = CGPoint(x: size.width / 2, y: size.height - 35)
+        countsLabel.zPosition = 100
+        countsLabel.horizontalAlignmentMode = .center
+        addChild(countsLabel)
 
         timerLabel = SKLabelNode(text: "⏱ 45s")
         timerLabel.fontSize = 14
@@ -165,38 +221,32 @@ class PromptRainScene: SKScene, ObservableObject {
         timerLabel.horizontalAlignmentMode = .right
         addChild(timerLabel)
 
-        // Legend
-        let legendItems = [("🍎 Good", SKColor.green), ("🥀 Toxic", SKColor.red)]
-        for (i, item) in legendItems.enumerated() {
-            let l = SKLabelNode(text: item.0)
-            l.fontSize = 11
-            l.fontName = "Menlo"
-            l.fontColor = item.1
-            l.position = CGPoint(x: 50 + CGFloat(i) * 80, y: size.height - 50)
-            l.zPosition = 100
-            l.horizontalAlignmentMode = .left
-            addChild(l)
-        }
     }
 
     // MARK: - Game Control
+
+    func pickNewTargetPrompt() {
+        currentTargetPrompt = targetPrompts.randomElement() ?? targetPrompts[0]
+    }
 
     func startGame() {
         // Clear previous state
         enumerateChildNodes(withName: "fruit") { node, _ in node.removeFromParent() }
         score = 0
+        goodCaughtCount = 0
+        badCaughtCount = 0
         caughtFragments = []
         missedCategories = []
+        uniquePartsCaught = 0
         isGameOver = false
         gameTime = 0
         lastSpawnTime = 0
         timeRemaining = totalDuration
-        lastCaughtOrder = []
         spawnInterval = 1.2
         toxicMultiplier = 1.0
         fmEvaluation = nil
         gameStarted = true
-        scoreLabel.text = "Score: 0"
+        updateHUD()
     }
 
     func endGame() {
@@ -205,12 +255,17 @@ class PromptRainScene: SKScene, ObservableObject {
 
         // Compute missed categories
         let caughtCats = Set(caughtFragments.filter { $0.category.isGood }.map { $0.category.rawValue })
-        let allGoodCats = ["role", "task", "audience", "context", "constraint", "output"]
-        missedCategories = allGoodCats.filter { !caughtCats.contains($0) }
+        let allGoodCats = Set(["role", "task", "audience", "context", "constraint", "output"])
+        missedCategories = Array(allGoodCats.subtracting(caughtCats))
+        uniquePartsCaught = caughtCats.count
+        
+        // Remove complex completion bonuses to keep score simple and consistent
+        updateHUD()
 
         // Show game over banner
-        let banner = SKLabelNode(text: "⏱ Round Over!")
-        banner.fontSize = 22
+        let bannerText = "Caught \(uniquePartsCaught)/6 Parts!"
+        let banner = SKLabelNode(text: bannerText)
+        banner.fontSize = 20
         banner.fontName = "Menlo-Bold"
         banner.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1)
         banner.position = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -288,18 +343,18 @@ class PromptRainScene: SKScene, ObservableObject {
 
                     if isGood {
                         self.score += 10
+                        self.goodCaughtCount += 1
                         self.catchEffect(at: node.position, color: .green)
                         if let cat = FragmentCategory(rawValue: catStr) {
                             let frag = PromptFragment(text: text, category: cat, emoji: emoji)
                             self.caughtFragments.append(frag)
-                            self.lastCaughtOrder.append(cat)
-                            self.checkSequenceBonus()
                         }
                     } else {
                         self.score -= 5
+                        self.badCaughtCount += 1
                         self.catchEffect(at: node.position, color: .red)
                     }
-                    self.scoreLabel.text = "Score: \(self.score)"
+                    self.updateHUD()
                 }
                 toRemove.append(node)
             }
@@ -317,6 +372,8 @@ class PromptRainScene: SKScene, ObservableObject {
         let toxicChance = min(0.65, 0.3 * toxicMultiplier)
         let isToxic = Double.random(in: 0...1) < toxicChance
         let pool = isToxic ? toxicFragments : goodFragments
+        guard !pool.isEmpty else { return }
+        
         let fragment = pool[Int.random(in: 0..<pool.count)]
 
         let node = createFruitNode(fragment: fragment)
@@ -325,10 +382,10 @@ class PromptRainScene: SKScene, ObservableObject {
         node.zPosition = 8
         addChild(node)
 
-        // Random speed variation
-        let speedMultiplier = CGFloat.random(in: 0.8...2.0)
+        // Random speed variation - making it more variable
+        let speedMultiplier = CGFloat.random(in: 0.6...2.5)
         node.physicsBody?.linearDamping = 0
-        node.physicsBody?.velocity = CGVector(dx: CGFloat.random(in: -15...15), dy: -60 * speedMultiplier)
+        node.physicsBody?.velocity = CGVector(dx: CGFloat.random(in: -15...15), dy: -70 * speedMultiplier)
     }
 
     private func createFruitNode(fragment: PromptFragment) -> SKNode {
@@ -337,29 +394,30 @@ class PromptRainScene: SKScene, ObservableObject {
 
         // Fruit/flower sprite
         let emojiLabel = SKLabelNode(text: fragment.emoji)
-        emojiLabel.fontSize = 24
-        emojiLabel.position = CGPoint(x: 0, y: 5)
+        emojiLabel.fontSize = 28 // Increased emoji size
+        emojiLabel.position = CGPoint(x: 0, y: 12)
         container.addChild(emojiLabel)
 
         // Text label
-        let textBG = SKSpriteNode(
-            color: fragment.category.color.withAlphaComponent(0.85),
-            size: CGSize(width: CGFloat(fragment.text.count) * 7 + 16, height: 18)
-        )
-        textBG.position = CGPoint(x: 0, y: -14)
-        textBG.zPosition = 1
-        container.addChild(textBG)
-
         let textLabel = SKLabelNode(text: fragment.text)
-        textLabel.fontSize = 10
+        textLabel.fontSize = 16 // Increased from 14 for readability
         textLabel.fontName = "Menlo-Bold"
         textLabel.fontColor = .white
-        textLabel.position = CGPoint(x: 0, y: -18)
+        textLabel.position = CGPoint(x: 0, y: -22)
         textLabel.zPosition = 2
         container.addChild(textLabel)
 
+        // Text background (adjusted for larger text size)
+        let textBG = SKSpriteNode(
+            color: fragment.category.color.withAlphaComponent(0.85),
+            size: CGSize(width: CGFloat(fragment.text.count) * 10 + 20, height: 26) // Slightly wider
+        )
+        textBG.position = CGPoint(x: 0, y: -16)
+        textBG.zPosition = 1
+        container.addChild(textBG)
+
         // Physics
-        container.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: 50, height: 40))
+        container.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: 60, height: 50)) // Slightly larger hitbox
         container.physicsBody?.collisionBitMask = 0
         container.physicsBody?.affectedByGravity = true
         container.physicsBody?.allowsRotation = false
@@ -374,32 +432,11 @@ class PromptRainScene: SKScene, ObservableObject {
         return container
     }
 
-    // MARK: - Scoring Helpers
+    // MARK: - Handlers
 
-    private func checkSequenceBonus() {
-        guard lastCaughtOrder.count >= 3 else { return }
-        let last3 = Array(lastCaughtOrder.suffix(3))
-        if last3 == bonusSequence {
-            score += 50
-            scoreLabel.text = "Score: \(score)"
-            lastCaughtOrder = []
-
-            // Bonus banner
-            let bonus = SKLabelNode(text: "+50 Sequence Bonus!")
-            bonus.fontSize = 16
-            bonus.fontName = "Menlo-Bold"
-            bonus.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1)
-            bonus.position = CGPoint(x: size.width / 2, y: size.height / 2 + 40)
-            bonus.zPosition = 150
-            addChild(bonus)
-            bonus.run(SKAction.sequence([
-                SKAction.group([
-                    SKAction.moveBy(x: 0, y: 40, duration: 1.0),
-                    SKAction.fadeOut(withDuration: 1.0),
-                ]),
-                SKAction.removeFromParent(),
-            ]))
-        }
+    private func updateHUD() {
+        scoreLabel.text = "Score: \(score)"
+        countsLabel.text = "Good: \(goodCaughtCount) | Bad: \(badCaughtCount)"
     }
 
     private func catchEffect(at pos: CGPoint, color: SKColor) {

@@ -22,6 +22,11 @@ struct Stage1_AirView: View {
     @State private var shuffledBlocks: [DragBlock] = []
     @State private var rejectedBlocks: Set<UUID> = []
     @State private var showConfetti = false
+    @StateObject private var speech = SpeechManager()
+
+    private var speakText: String {
+        "Stage 1: Air, Clarity. \(config.conceptText) Your current starting prompt is: \(Curriculum.startingPrompt). Notice it is missing a clear role (who is the AI?), missing a task verb (what should it do?), and missing a bounded scope. Tap the available blocks to assign a role and a task to your prompt."  
+    }
 
     private var assembledPrompt: String {
         var parts: [String] = []
@@ -93,6 +98,12 @@ struct Stage1_AirView: View {
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Air — Clarity")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                SpeakerButton(speech: speech, text: speakText)
+            }
+        }
+        .onDisappear { speech.stop() }
         .onAppear {
             if shuffledBlocks.isEmpty {
                 shuffledBlocks = blocks.shuffled()
@@ -240,12 +251,6 @@ struct Stage1_AirView: View {
                 Label("\(assembledTokens) tokens", systemImage: "number")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.orange)
-
-                if roleSlot != nil || taskSlot != nil {
-                    Text("+\(assembledTokens - Curriculum.startingTokens)")
-                        .font(.caption.weight(.semibold).monospaced())
-                        .foregroundStyle(.orange.opacity(0.7))
-                }
             }
         }
     }
@@ -282,31 +287,13 @@ struct Stage1_AirView: View {
 
     private func evaluate() async {
         isEvaluating = true
-        var checks: [(String, Bool)] = heuristicChecks()
-        var feedback = "Good start. Audience comes next."
-
-        if #available(iOS 26, *) {
-            do {
-                let session = LanguageModelSession()
-                let prompt = "Evaluate this prompt for clarity. Check if it has: a role, a task verb, and no filler phrases.\nPrompt: \"\(assembledPrompt)\"\nRespond with JSON: {\"hasRole\": true/false, \"hasTask\": true/false, \"hasFillerPhrase\": true/false, \"feedback\": \"one sentence\"}"
-                let response = try await session.respond(to: prompt)
-                let text = response.content
-                if let data = text.data(using: String.Encoding.utf8),
-                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    let hasRole = json["hasRole"] as? Bool ?? (roleSlot != nil)
-                    let hasTask = json["hasTask"] as? Bool ?? (taskSlot != nil)
-                    let noFiller = !(json["hasFillerPhrase"] as? Bool ?? false)
-                    feedback = json["feedback"] as? String ?? feedback
-                    checks = [("Role defined", hasRole), ("Action verb present", hasTask), ("No filler phrases", noFiller)]
-                }
-            } catch { }
-        }
-
+        let checks: [(String, Bool)] = heuristicChecks()
         let earned = checks.filter(\.1).count
+        let feedback = earned >= 3 ? "Ambiguity is clearing. Good start." : "Keep going. Good start."
         let score = StageScore(
             checks: checks.map { (label: $0.0, passed: $0.1) },
             total: checks.count, earned: earned,
-            feedback: "\(earned >= 3 ? "Air is clearing." : "Keep going.") \(feedback)"
+            feedback: feedback
         )
         await MainActor.run {
             withAnimation { result = score }

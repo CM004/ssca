@@ -29,16 +29,13 @@ struct DashboardView: View {
         return zip(labels, data).map { ($0, $1) }
     }
 
-    private var startTokens: Int { appState.tokenHistory.first ?? Curriculum.startingPrompt.split(separator: " ").count }
+    private var startTokens: Int { appState.tokenHistory.first ?? Curriculum.startingTokens }
     private var finalTokens: Int { appState.tokenHistory.last ?? startTokens }
 
     private var badPromptConversationCost: Int { startTokens * badExchanges * 2 }
     private var goodPromptConversationCost: Int { finalTokens * 2 }
 
-    private var tokenReduction: Int {
-        guard startTokens > 0 else { return 0 }
-        return max(0, Int(Double(startTokens - finalTokens) / Double(startTokens) * 100))
-    }
+    private var exchangesSaved: Int { max(0, badExchanges - 1) }
 
     private var costSavings: Int {
         guard badPromptConversationCost > 0 else { return 0 }
@@ -161,8 +158,8 @@ struct DashboardView: View {
                 // Real-time Metrics — 2 cards
                 chartCard(title: "Performance Metrics", infoCard: .metrics) {
                     HStack(spacing: 12) {
-                        MetricCard(icon: "arrow.down.circle", value: "\(tokenReduction)%", label: "Token Reduction")
-                        MetricCard(icon: "target", value: "\(accuracyEstimate)%", label: "Accuracy")
+                        MetricCard(icon: "arrow.triangle.2.circlepath", value: "\(badExchanges)→1", label: "Exchanges Reduced")
+                        MetricCard(icon: "target", value: "\(accuracyEstimate)%", label: "Prompt Quality")
                     }
 
                     // Stage scores breakdown
@@ -343,7 +340,7 @@ struct DashboardView: View {
                 Token history: \(appState.tokenHistory)
                 Stages: \(appState.stageScores.sorted(by: { $0.key < $1.key }).map { "Stage \($0.key): \($0.value.earned)/\($0.value.total)" }.joined(separator: ", "))
                 Bad prompt estimated exchanges: \(badExchanges)
-                Token reduction: \(tokenReduction)%, Accuracy: \(accuracyEstimate)%
+                Follow-up rounds saved: \(exchangesSaved), Prompt Quality: \(accuracyEstimate)%
                 """
 
                 let prompt: String
@@ -366,9 +363,9 @@ struct DashboardView: View {
                 case .metrics:
                     prompt = """
                     \(context)
-                    Explain these 2 visible metrics and link them to latency and overall performance:
-                    - Token Reduction: \(tokenReduction)% — what this means for API costs. Also explain how this directly improves latency (fewer tokens = faster processing by ~\(tokenReduction)%).
-                    - Accuracy: \(accuracyEstimate)% — based on evaluation checks passed across all 5 stages. Also mention this reflects the overall learning score.
+                    Explain these 2 visible metrics:
+                    - Follow-up Rounds Saved: \(exchangesSaved)x — the user's optimized prompt eliminates \(exchangesSaved) follow-up exchanges that a vague prompt would need. Explain how each saved round means less energy, less waiting, fewer AI responses generated.
+                    - Prompt Quality: \(accuracyEstimate)% — based on evaluation checks passed across all 5 stages. This reflects the overall learning score.
                     Keep under 150 words, conversational.
                     """
                 }
@@ -391,7 +388,7 @@ struct DashboardView: View {
         case .conversationCost:
             return "The vague starting prompt would need ~\(badExchanges) exchanges to get a good answer (~\(badPromptConversationCost) tokens). Your optimized prompt does it in 1 exchange (~\(goodPromptConversationCost) tokens) — a \(costSavings)% saving."
         case .metrics:
-            return "Token reduction: \(tokenReduction)% fewer tokens — this also means ~\(tokenReduction)% faster response times (latency). Accuracy: \(accuracyEstimate)% of quality checks passed across all stages, reflecting your overall prompt quality."
+            return "You saved \(exchangesSaved) follow-up rounds — that's \(exchangesSaved) fewer AI responses generated, less energy used, less waiting. Your prompt quality score of \(accuracyEstimate)% reflects how many best-practice checks you passed across all 5 stages."
         }
     }
 }

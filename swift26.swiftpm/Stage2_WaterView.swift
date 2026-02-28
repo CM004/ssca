@@ -19,6 +19,11 @@ struct Stage2_WaterView: View {
     @State private var result: StageScore? = nil
     @State private var userHasReordered = false
     @State private var showConfetti = false
+    @StateObject private var speech = SpeechManager()
+
+    private var speakText: String {
+        "Stage 2: Water, Structure. \(config.conceptText) Your current prompt is: \(appState.currentPrompt). Notice that it is still missing an audience, output format, and depth constraint. Arrange the blocks below in the correct structural order. The core flow is Role, Task, Audience, Constraint, and Output."  
+    }
 
     private var assembledPrompt: String {
         items.map(\.text).joined(separator: " ") + "."
@@ -40,7 +45,7 @@ struct Stage2_WaterView: View {
 
                 // Current prompt
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Current prompt (from Stage 1)")
+                    Text("Unclear prompt")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
                     Text(appState.currentPrompt)
@@ -107,6 +112,12 @@ struct Stage2_WaterView: View {
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Water — Structure")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                SpeakerButton(speech: speech, text: speakText)
+            }
+        }
+        .onDisappear { speech.stop() }
         .onAppear { if items.isEmpty { items = Curriculum.stage2Items.shuffled() } }
     }
 
@@ -240,7 +251,7 @@ struct Stage2_WaterView: View {
             ("Output format last", items.last?.category == "Output Format"),
             ("Perfect order", orderMatches),
         ]
-        var feedback = orderMatches ? "Structure complete. Now trim it." : "Almost — check the block order."
+        var feedback = orderMatches ? "Structure added. Re-work exchanges needed reduced. Now trim it." : "Almost — check the block order."
 
         // Try Foundation Model evaluation
         if #available(iOS 26, *) {

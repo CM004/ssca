@@ -61,17 +61,22 @@ enum ThinkingStyle: String, CaseIterable, Identifiable {
 }
 
 struct Stage4_SoilView: View {
-
+    
     @EnvironmentObject var appState: AppState
     private let config = Curriculum.stage(for: 4)!
-
+    
     @State private var contextSentence: String = ""
     @State private var examples: [FewShotExample] = []
     @State private var thinkingStyle: ThinkingStyle = .none
     @State private var isEvaluating = false
     @State private var result: StageScore? = nil
     @State private var showConfetti = false
-
+    @StateObject private var speech = SpeechManager()
+    
+    private var speakText: String {
+        "Stage 4: Soil, Context. \(config.conceptText) Ground your prompt with context and examples. You can add a context sentence, optional few-shot examples to show the AI what you want, and select an AI Thinking Style for complex problems. Remember, more context costs more tokens, but brings more accurate responses."
+    }
+    
     private var assembledPrompt: String {
         var p = appState.currentPrompt
         if !contextSentence.isEmpty { p += " Context: \(contextSentence)." }
@@ -89,18 +94,18 @@ struct Stage4_SoilView: View {
     private var assembledTokens: Int { assembledPrompt.split(separator: " ").count }
     private var canEvaluate: Bool { !contextSentence.isEmpty }
     private var validExampleCount: Int { examples.filter { !$0.input.isEmpty && !$0.output.isEmpty }.count }
-
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-
+                
                 techniques
                 Text(config.conceptText).font(.body).foregroundStyle(.secondary)
                 Divider()
-
+                
                 Text("Ground your prompt with context and examples.")
                     .font(.headline)
-
+                
                 // Context field
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Context Sentence")
@@ -109,19 +114,19 @@ struct Stage4_SoilView: View {
                         .lineLimit(2...4)
                         .textFieldStyle(.roundedBorder)
                 }
-
+                
                 Divider()
-
+                
                 // Few-shot examples
                 fewShotSection
-
+                
                 Divider()
-
+                
                 // Thinking style
                 thinkingStyleSection
-
+                
                 Divider()
-
+                
                 // Token warning
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle")
@@ -138,11 +143,11 @@ struct Stage4_SoilView: View {
                 .padding(10)
                 .background(.orange.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(.orange.opacity(0.2), lineWidth: 1))
-
+                
                 promptPreview
-
+                
                 if canEvaluate { evaluateButton }
-
+                
                 if let result = result {
                     EvaluationResultView(
                         emoji: "🌍", title: "Soil Context Score",
@@ -171,10 +176,16 @@ struct Stage4_SoilView: View {
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Soil — Context")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                SpeakerButton(speech: speech, text: speakText)
+            }
+        }
+        .onDisappear { speech.stop() }
     }
-
+    
     // MARK: - Subviews
-
+    
     private var techniques: some View {
         HStack(spacing: 6) {
             ForEach(config.techniqueNames, id: \.self) { (t: String) in
@@ -184,7 +195,7 @@ struct Stage4_SoilView: View {
             }
         }
     }
-
+    
     private var fewShotSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -197,11 +208,11 @@ struct Stage4_SoilView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-
+            
             ForEach(Array(examples.enumerated()), id: \.element.id) { idx, _ in
                 exampleCard(index: idx)
             }
-
+            
             // Add example button
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -215,7 +226,7 @@ struct Stage4_SoilView: View {
             .tint(.green)
         }
     }
-
+    
     private func exampleCard(index: Int) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -233,12 +244,12 @@ struct Stage4_SoilView: View {
                     }
                 }
             }
-
+            
             Text("Input:").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
             TextField("e.g. What causes global warming?", text: $examples[index].input)
                 .textFieldStyle(.roundedBorder)
                 .font(.callout)
-
+            
             Text("Output:").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
             TextField("e.g. Greenhouse gas emissions from…", text: $examples[index].output, axis: .vertical)
                 .lineLimit(2...3)
@@ -248,25 +259,25 @@ struct Stage4_SoilView: View {
         .padding(10)
         .background(Color(.secondarySystemFill), in: RoundedRectangle(cornerRadius: 8))
     }
-
+    
     private var thinkingStyleSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("AI Thinking Style - For complex problems (optional)")
                 .font(.subheadline.weight(.medium))
-
+            
             Picker("Thinking Style", selection: $thinkingStyle) {
                 ForEach(ThinkingStyle.allCases) { style in
                     Text(style.rawValue).tag(style)
                 }
             }
             .pickerStyle(.menu)
-
+            
             if thinkingStyle != .none {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(thinkingStyle.description)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-
+                    
                     HStack(spacing: 4) {
                         Text("Adds to prompt:")
                             .font(.caption2).foregroundStyle(.secondary)
@@ -274,7 +285,7 @@ struct Stage4_SoilView: View {
                             .font(.caption2.monospaced().weight(.medium))
                             .foregroundStyle(.orange)
                     }
-
+                    
                     Text("\(thinkingStyle.tokenCost) tokens")
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(.orange)
@@ -284,7 +295,7 @@ struct Stage4_SoilView: View {
             }
         }
     }
-
+    
     private var promptPreview: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Live Prompt Preview").font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
@@ -297,7 +308,7 @@ struct Stage4_SoilView: View {
                 .font(.caption.weight(.semibold)).foregroundStyle(.orange)
         }
     }
-
+    
     private var evaluateButton: some View {
         Button {
             Task { await evaluate() }
@@ -310,15 +321,20 @@ struct Stage4_SoilView: View {
         }
         .buttonStyle(.borderedProminent).controlSize(.large).tint(.green).disabled(isEvaluating)
     }
-
+    
     private func evaluate() async {
         isEvaluating = true
-        let hasContext = !contextSentence.trimmingCharacters(in: .whitespaces).isEmpty
+        
+        let trimmed = contextSentence.trimmingCharacters(in: .whitespaces)
+        let hasContext = !trimmed.isEmpty
+        
+        // Fix: >= 2 words is specific enough — "writing homework" is valid context
+        let contextQuality = trimmed.split(separator: " ").count >= 2
+        
         let hasExample = validExampleCount >= 1
         let hasMultipleExamples = validExampleCount >= 2
-        let contextQuality = contextSentence.split(separator: " ").count >= 5
         let hasThinking = thinkingStyle != .none
-
+        
         var checks: [(String, Bool)] = [
             ("Context sentence present", hasContext),
             ("Context is specific enough", contextQuality),
@@ -326,9 +342,9 @@ struct Stage4_SoilView: View {
             ("Multiple examples (few-shot)", hasMultipleExamples),
             ("Thinking style selected", hasThinking),
         ]
+        
         var feedback = ""
-
-        // Foundation Model evaluation
+        
         if #available(iOS 26, *) {
             do {
                 let session = LanguageModelSession()
@@ -349,19 +365,29 @@ struct Stage4_SoilView: View {
                 }
             } catch { }
         }
-
+        
         if feedback.isEmpty {
-            feedback = hasContext && hasExample
-                ? "Roots are deepening. The tree has grounding."
-                : "Add more context and examples for stronger roots."
+            // Adaptive feedback based on what's missing
+            if !hasContext {
+                feedback = "Add a context sentence to ground the prompt."
+            } else if !hasExample {
+                feedback = "Context added ✓ Try adding an example for higher accuracy."
+            } else if !hasMultipleExamples {
+                feedback = "Good context + example. Add one more example for few-shot learning."
+            } else if !hasThinking {
+                feedback = "Strong context and examples. Try a thinking style for complex tasks."
+            } else {
+                feedback = "Roots are deepening. The tree has full grounding."
+            }
         }
-
+        
         let earned = checks.filter(\.1).count
         let score = StageScore(
             checks: checks.map { (label: $0.0, passed: $0.1) },
             total: checks.count, earned: earned,
             feedback: feedback
         )
+        
         await MainActor.run {
             withAnimation { result = score }
             isEvaluating = false

@@ -62,7 +62,12 @@ enum Curriculum {
 
     // MARK: - Starting Prompt
     static let startingPrompt = "Tell me something about climate change."
-    static let startingTokens = 8
+    static var startingTokens: Int {
+        startingPrompt
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .count
+    }
 
     // MARK: - Stage Configs
 
@@ -75,13 +80,13 @@ enum Curriculum {
         ),
         StageConfig(
             id: 2, emoji: "💧", element: "Water", principle: "Structure",
-            conceptText: "Water flows — but only if it has a channel.\n\nThe prompt has a role and task now but no structure. Julie needs to organize it so the AI knows the order of operations.",
+            conceptText: "Water flows — but only if it has a channel.\n\nThe prompt has a role and task now but no structure. You need to organize it so the AI knows the order of operations.",
             techniqueNames: ["Structured Prompting"],
             systemEvaluationPrompt: "Evaluate if this prompt follows Role→Task→Audience→Constraint→OutputFormat structure. Respond with JSON: {\"score\": 0-100, \"hasStructure\": bool, \"feedback\": \"string\"}"
         ),
         StageConfig(
             id: 3, emoji: "☀️", element: "Sunlight", principle: "Efficiency",
-            conceptText: "Sunlight is limited energy. The sun is blocked because of too many words.\n\nThe prompt is now correct but bloated. Julie must trim every redundant word without losing meaning.\n\nRedundant words cost real money and real time — across millions of requests.",
+            conceptText: "Sunlight is limited energy. The sun is blocked because of too many words.\n\nThe prompt is now correct but bloated. You must trim every redundant word without losing meaning.\n\nRedundant words cost real money and real time — across millions of requests.",
             techniqueNames: ["Keyword Extraction", "Symbol Compression"],
             systemEvaluationPrompt: "Evaluate if this prompt is efficiently compressed using symbols (& → [] {} | @ : ~ ! +) without losing meaning. Respond with JSON: {\"meaningPreserved\": bool, \"symbolsEffective\": bool, \"feedback\": \"string\"}"
         ),

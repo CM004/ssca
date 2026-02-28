@@ -9,6 +9,21 @@ import SwiftUI
 
 struct AboutView: View {
 
+    @StateObject private var speech = SpeechManager()
+
+    private var speakText: String {
+        """
+        About SamvaadFlow. Most people are taught what to ask AI. Nobody teaches them how.
+        Why This Exists: Every message you send to AI is broken into tokens. Every token costs compute. Every compute cycle costs energy. Research shows that bloated prompts can be reduced by 40 to 60 percent without losing meaning — producing faster, more accurate responses at a fraction of the cost. Most people have never been taught this. SamvaadFlow changes that.
+        How It Works: You restore a glowing tree — flickering because prompts are vague, unstructured, and unsafe. So is the communication between you and AI. The tree is a metaphor for your prompt. When your prompts are clear, structured, efficient, grounded, and safe, the tree glows.
+        Five stages: Air is Clarity. Water is Structure. Sunlight is Efficiency. Soil is Context. Nutrients is Safety. Five domains. Five elements. Five trees to restore.
+        Powered By Apple Intelligence: Every stage is evaluated by Apple's on-device Foundation Model, running entirely offline. No data leaves your device.
+        What You Take Away: Write prompts that are clear, structured, and efficient. Protect personal data before it reaches any AI system. See how language affects energy, cost, and accuracy. Track real impact, tokens saved, energy reduced, privacy protected. Know about the tradeoff between tokens and accuracy.
+        The Name: Samvaad is the Hindi word for meaningful dialogue. Flow is the state your prompts reach when every word earns its place. Together: the art of speaking to AI with purpose.
+        Built with SwiftUI, SpriteKit, and Apple Foundation Models. Small Steps, Big Impacts.
+        """
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
@@ -30,6 +45,12 @@ struct AboutView: View {
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("About SamvaadFlow")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                SpeakerButton(speech: speech, text: speakText)
+            }
+        }
+        .onDisappear { speech.stop() }
     }
 
     // MARK: - Section 1 — Hero

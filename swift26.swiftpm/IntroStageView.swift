@@ -10,6 +10,11 @@ import SwiftUI
 struct IntroStageView: View {
 
     @EnvironmentObject var appState: AppState
+    @StateObject private var speech = SpeechManager()
+
+    private var speakText: String {
+        "Welcome to SamvaadFlow. This tree can talk with AI but its glow is flickering because the communication is not strong. All of its energy is wasted in unclear prompts. Each missing element represents one fundamental rule of writing prompts that AI can actually use well. Your job: restore the glowing tree, one element at a time. Your starting prompt is: \(Curriculum.startingPrompt). This prompt has \(Curriculum.startingTokens) tokens. It will travel through all 5 stages. Each stage will fix one broken element."
+    }
 
     var body: some View {
         ScrollView {
@@ -20,7 +25,7 @@ struct IntroStageView: View {
                     .foregroundStyle(.white)
                     .padding(.top, 8)
 
-                Text("This tree can talk with AI but glowing tree is flickering becuase the communication is not strong. It lacks the essential elements needed to survive.")
+                Text("This tree can talk with AI but glowing tree is flickering becuase the communication is not strong. All of its energy is wasted in unclear prompts. It lacks the essential elements needed to survive.")
                     .font(.body)
                     .foregroundStyle(.white.opacity(0.6))
 
@@ -82,5 +87,11 @@ struct IntroStageView: View {
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Introduction")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                SpeakerButton(speech: speech, text: speakText)
+            }
+        }
+        .onDisappear { speech.stop() }
     }
 }

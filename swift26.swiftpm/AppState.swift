@@ -24,7 +24,7 @@ final class AppState: ObservableObject {
     @Published var currentPrompt: String = "Tell me something about climate change."
 
     /// Token count snapshot after each stage. Index 0 = starting prompt.
-    @Published var tokenHistory: [Int] = [8]
+    @Published var tokenHistory: [Int] = [Curriculum.startingTokens]
 
     // MARK: - Domain
 
@@ -97,7 +97,7 @@ final class AppState: ObservableObject {
         currentStage = 0
         completedStages = []
         currentPrompt = "Tell me something about climate change."
-        tokenHistory = [8]
+        tokenHistory = [Curriculum.startingTokens]
         stageScores = [:]
     }
 }

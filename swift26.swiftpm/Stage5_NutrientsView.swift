@@ -30,6 +30,11 @@ struct Stage5_NutrientsView: View {
     @State private var showConfetti = false
     @State private var showConstraintBuilder = false
     @State private var wrongSelections: Set<UUID> = []
+    @StateObject private var speech = SpeechManager()
+
+    private var speakText: String {
+        "Stage 5: Nutrients, Safety. \(config.conceptText) Oops! Someone added sensitive info to the prompt. The prompt from Stage 4 now contains personal data that should never be sent to an AI. Find and remove it. Tap items that should not be sent to an AI. Be careful, not everything is sensitive! You can also add output constraints."
+    }
 
     // Build the "unsafe" prompt = Stage 4 prompt with PII injected
     private var unsafePrompt: String {
@@ -235,6 +240,12 @@ struct Stage5_NutrientsView: View {
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Nutrients — Safety")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                SpeakerButton(speech: speech, text: speakText)
+            }
+        }
+        .onDisappear { speech.stop() }
         .onAppear {
             if shuffledItems.isEmpty {
                 shuffledItems = buildItems().shuffled()
@@ -341,7 +352,7 @@ struct Stage5_NutrientsView: View {
         let activeConstraints = constraints.filter(\.isOn).count
         let noFalsePositives = falsePositives == 0
         let checks: [(String, Bool)] = [
-            ("All PII items found", correctlyRedacted >= piiCount),
+            ("All Personal info found", correctlyRedacted >= piiCount),
             ("No false positives", noFalsePositives),
             ("At least 1 output constraint", activeConstraints >= 1),
             ("Word limit constraint", hasWordLimit),
