@@ -26,26 +26,35 @@ struct GameScenario {
 
 enum FragmentCategory: String {
     case role, task, audience, context, constraint, output
-    case pii, filler, vague
+    case chainOfThought, oneShot, fewShot, treeOfThought, stepByStep
+    case pii, filler, unrequired, repeating
 
     var isGood: Bool {
         switch self {
-        case .role, .task, .audience, .context, .constraint, .output: return true
-        case .pii, .filler, .vague: return false
+        case .role, .task, .audience, .context, .constraint, .output,
+             .chainOfThought, .oneShot, .fewShot, .treeOfThought, .stepByStep: return true
+        case .pii, .filler, .unrequired, .repeating: return false
         }
     }
 
     var color: SKColor {
         switch self {
-        case .role:       return SKColor(red: 0.2, green: 0.8, blue: 0.4, alpha: 1)
-        case .task:       return SKColor(red: 0.3, green: 0.7, blue: 1.0, alpha: 1)
-        case .audience:   return SKColor(red: 0.9, green: 0.7, blue: 0.2, alpha: 1)
-        case .context:    return SKColor(red: 0.5, green: 0.8, blue: 0.5, alpha: 1)
-        case .constraint: return SKColor(red: 0.6, green: 0.5, blue: 0.9, alpha: 1)
-        case .output:     return SKColor(red: 0.3, green: 0.9, blue: 0.8, alpha: 1)
-        case .pii:        return SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1)
-        case .filler:     return SKColor(red: 0.7, green: 0.3, blue: 0.3, alpha: 1)
-        case .vague:      return SKColor(red: 0.8, green: 0.4, blue: 0.2, alpha: 1)
+        case .role:           return SKColor(red: 0.2, green: 0.8, blue: 0.4, alpha: 1)
+        case .task:           return SKColor(red: 0.3, green: 0.7, blue: 1.0, alpha: 1)
+        case .audience:       return SKColor(red: 0.9, green: 0.7, blue: 0.2, alpha: 1)
+        case .context:        return SKColor(red: 0.5, green: 0.8, blue: 0.5, alpha: 1)
+        case .constraint:     return SKColor(red: 0.6, green: 0.5, blue: 0.9, alpha: 1)
+        case .output:         return SKColor(red: 0.3, green: 0.9, blue: 0.8, alpha: 1)
+        case .chainOfThought: return SKColor(red: 0.4, green: 0.6, blue: 0.9, alpha: 1)
+        case .oneShot:        return SKColor(red: 0.8, green: 0.5, blue: 0.7, alpha: 1)
+        case .fewShot:        return SKColor(red: 0.9, green: 0.4, blue: 0.6, alpha: 1)
+        case .treeOfThought:  return SKColor(red: 0.2, green: 0.7, blue: 0.6, alpha: 1)
+        case .stepByStep:     return SKColor(red: 0.9, green: 0.6, blue: 0.4, alpha: 1)
+            
+        case .pii:            return SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1)
+        case .filler:         return SKColor(red: 0.7, green: 0.3, blue: 0.3, alpha: 1)
+        case .unrequired:     return SKColor(red: 0.8, green: 0.5, blue: 0.2, alpha: 1)
+        case .repeating:      return SKColor(red: 0.6, green: 0.3, blue: 0.5, alpha: 1)
         }
     }
 }
@@ -91,57 +100,32 @@ class PromptRainScene: SKScene, ObservableObject {
 
     private let scenarios: [TargetScenario] = [
         TargetScenario(
-            title: "Climate Change",
-            promptText: "Role: scientist.\nExplain causes for high schoolers\n→ bullet points.",
+            title: "The Ultimate Prompt Master",
+            promptText: """
+            Role: AI Assistant
+            Context: Given the dataset
+            Task: Solve a math puzzle
+            Audience: For 5th graders
+            Constraint: Under 100 words
+            Output: JSON format
+            Step-by-Step: Break down the steps
+            Chain of Thought: Explain reasoning
+            One-Shot: Example: 2+2=4
+            Few-Shot: e.g. 1+1=2, 3+3=6
+            Tree of Thought: Explore 3 paths
+            """,
             goodFragments: [
-                PromptFragment(text: "Role: scientist", category: .role, emoji: "🍎"),
-                PromptFragment(text: "Explain causes", category: .task, emoji: "🍊"),
-                PromptFragment(text: "for high schoolers", category: .audience, emoji: "🍋"),
-                PromptFragment(text: "→ bullet points", category: .output, emoji: "🍇")
-            ]
-        ),
-        TargetScenario(
-            title: "Mental Health",
-            promptText: "Role: therapist.\nSummarize coping strategies for teens\nunder 100 words → numbered list.",
-            goodFragments: [
-                PromptFragment(text: "Role: therapist", category: .role, emoji: "🍎"),
-                PromptFragment(text: "Summarize coping strategies", category: .task, emoji: "🍊"),
-                PromptFragment(text: "for teens", category: .audience, emoji: "🍋"),
-                PromptFragment(text: "under 100 words", category: .constraint, emoji: "🫐"),
-                PromptFragment(text: "→ numbered list", category: .output, emoji: "🍇")
-            ]
-        ),
-        TargetScenario(
-            title: "Legal Advice",
-            promptText: "Role: legal advisor.\nDraft a summary for a small business owner.\nIndia jurisdiction only. plain English.",
-            goodFragments: [
-                PromptFragment(text: "Role: legal advisor", category: .role, emoji: "🍎"),
-                PromptFragment(text: "Draft a summary", category: .task, emoji: "🍊"),
-                PromptFragment(text: "for a small business owner", category: .audience, emoji: "🍋"),
-                PromptFragment(text: "India jurisdiction only", category: .constraint, emoji: "🫐"),
-                PromptFragment(text: "plain English", category: .output, emoji: "🍇")
-            ]
-        ),
-        TargetScenario(
-            title: "UX Research",
-            promptText: "Role: UX Researcher.\nDesign a survey for mobile users\nfocus on accessibility → tabular format.",
-            goodFragments: [
-                PromptFragment(text: "Role: UX Researcher", category: .role, emoji: "🍎"),
-                PromptFragment(text: "Design a survey", category: .task, emoji: "🍊"),
-                PromptFragment(text: "for mobile users", category: .audience, emoji: "🍋"),
-                PromptFragment(text: "focus on accessibility", category: .constraint, emoji: "🫐"),
-                PromptFragment(text: "→ tabular format", category: .output, emoji: "🍇")
-            ]
-        ),
-        TargetScenario(
-            title: "Data Analysis",
-            promptText: "Role: Senior Data Analyst.\nSummarize Q3 earnings report for executives\nunder 150 words → JSON format.",
-            goodFragments: [
-                PromptFragment(text: "Role: Senior Data Analyst", category: .role, emoji: "🍎"),
-                PromptFragment(text: "Summarize Q3 earnings report", category: .task, emoji: "🍊"),
-                PromptFragment(text: "for executives", category: .audience, emoji: "🍋"),
-                PromptFragment(text: "under 150 words", category: .constraint, emoji: "🫐"),
-                PromptFragment(text: "→ JSON format", category: .output, emoji: "🍇")
+                PromptFragment(text: "Role: AI Assistant", category: .role, emoji: "🍎"),
+                PromptFragment(text: "Given the dataset", category: .context, emoji: "🍏"),
+                PromptFragment(text: "Solve a puzzle", category: .task, emoji: "🍊"),
+                PromptFragment(text: "For 5th graders", category: .audience, emoji: "🍋"),
+                PromptFragment(text: "Under 100 words", category: .constraint, emoji: "🫐"),
+                PromptFragment(text: "JSON format", category: .output, emoji: "🍇"),
+                PromptFragment(text: "Step-by-step", category: .stepByStep, emoji: "🍉"),
+                PromptFragment(text: "Explain reasoning", category: .chainOfThought, emoji: "🧠"),
+                PromptFragment(text: "Example: 2+2=4", category: .oneShot, emoji: "🎯"),
+                PromptFragment(text: "e.g. 1+1=2, 3+3=6", category: .fewShot, emoji: "🎯"),
+                PromptFragment(text: "Explore 3 paths", category: .treeOfThought, emoji: "🌲")
             ]
         )
     ]
@@ -149,15 +133,14 @@ class PromptRainScene: SKScene, ObservableObject {
     private var currentTargetScenario: TargetScenario?
 
     private let toxicFragments: [PromptFragment] = [
-        PromptFragment(text: "John Smith", category: .pii, emoji: "🥀"),
-        PromptFragment(text: "SSN: 123-45", category: .pii, emoji: "🥀"),
-        PromptFragment(text: "email@test.com", category: .pii, emoji: "🥀"),
-        PromptFragment(text: "basically", category: .filler, emoji: "🍂"),
-        PromptFragment(text: "kind of", category: .filler, emoji: "🍂"),
-        PromptFragment(text: "you know", category: .filler, emoji: "🍂"),
-        PromptFragment(text: "do something", category: .vague, emoji: "🍂"),
-        PromptFragment(text: "help me", category: .vague, emoji: "🍂"),
-        PromptFragment(text: "tell me stuff", category: .vague, emoji: "🍂"),
+        PromptFragment(text: "Jane Doe's SSN", category: .pii, emoji: "🥀"),
+        PromptFragment(text: "phone: 555-0100", category: .pii, emoji: "🥀"),
+        PromptFragment(text: "umm, basically", category: .filler, emoji: "🍂"),
+        PromptFragment(text: "you know what I mean", category: .filler, emoji: "🍂"),
+        PromptFragment(text: "please if you don't mind", category: .unrequired, emoji: "💬"),
+        PromptFragment(text: "I was wondering if", category: .unrequired, emoji: "💬"),
+        PromptFragment(text: "again, as I said", category: .repeating, emoji: "🔁"),
+        PromptFragment(text: "like I told you before", category: .repeating, emoji: "🔁")
     ]
 
     // Fragment pools

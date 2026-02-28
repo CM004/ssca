@@ -52,7 +52,7 @@ struct PromptRainView: View {
                 .font(.title.weight(.bold))
                 .foregroundStyle(.white)
             
-            Text("Catch good prompt fragments falling from the tree.\nDodge toxic ones — personal data, filler words, vague phrases.")
+            Text("Catch good prompt fragments like chain of thought, context, and one-shots.\nDodge toxic ones — unrequired words, repeating phrases, or PII.")
                 .font(.callout)
                 .foregroundStyle(.white.opacity(0.8))
                 .multilineTextAlignment(.center)
@@ -60,7 +60,6 @@ struct PromptRainView: View {
             VStack(alignment: .leading, spacing: 6) {
                 ruleRow("🍎", "+10", "Good fragment caught")
                 ruleRow("🥀", "−5", "Toxic fragment caught")
-                ruleRow("⚡", "+50", "Role → Task → Audience sequence")
             }
             .padding(12)
             .background(.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
