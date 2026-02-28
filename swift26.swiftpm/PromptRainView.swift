@@ -134,15 +134,32 @@ struct PromptRainView: View {
     
     // MARK: - Results Overlay
     
+    private var performanceGrade: (title: String, color: Color) {
+        let maxScore = max(1, scene.totalGoodSpawned * 10)
+        let percentage = Double(scene.score) / Double(maxScore)
+        switch percentage {
+        case ..<0.30: return ("Bad", .red)
+        case 0.30..<0.60: return ("Average", .orange)
+        case 0.60..<0.85: return ("Good", .green)
+        default: return ("Best", .cyan)
+        }
+    }
+
     private var resultsOverlay: some View {
         VStack(spacing: 16) {
             Text("⏱ Round Over!")
                 .font(.title2.weight(.bold))
                 .foregroundStyle(.white)
             
-            Text("Score: \(scene.score)")
-                .font(.title.weight(.bold).monospaced())
-                .foregroundStyle(.green)
+            let grade = performanceGrade
+            HStack(spacing: 8) {
+                Text("Score: \(scene.score)")
+                    .font(.title.weight(.bold).monospaced())
+                    .foregroundStyle(.white)
+                Text("(\(grade.title))")
+                    .font(.title2.weight(.bold).monospaced())
+                    .foregroundStyle(grade.color)
+            }
             
             // Caught fragments
             if !scene.caughtFragments.isEmpty {

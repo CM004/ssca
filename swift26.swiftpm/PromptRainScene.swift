@@ -67,6 +67,7 @@ class PromptRainScene: SKScene, ObservableObject {
     @Published var isGameOver = false
     @Published var goodCaughtCount: Int = 0
     @Published var badCaughtCount: Int = 0
+    @Published var totalGoodSpawned: Int = 0
     @Published var timeRemaining: Double = 45
     @Published var fmEvaluation: String? = nil
     @Published var currentTargetPrompt: String = ""
@@ -235,6 +236,7 @@ class PromptRainScene: SKScene, ObservableObject {
         score = 0
         goodCaughtCount = 0
         badCaughtCount = 0
+        totalGoodSpawned = 0
         caughtFragments = []
         missedCategories = []
         uniquePartsCaught = 0
@@ -373,6 +375,10 @@ class PromptRainScene: SKScene, ObservableObject {
         let isToxic = Double.random(in: 0...1) < toxicChance
         let pool = isToxic ? toxicFragments : goodFragments
         guard !pool.isEmpty else { return }
+        
+        if (!isToxic) {
+            totalGoodSpawned += 1
+        }
         
         let fragment = pool[Int.random(in: 0..<pool.count)]
 
