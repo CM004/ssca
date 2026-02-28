@@ -236,30 +236,28 @@ struct PracticeView: View {
             do {
                 let session = LanguageModelSession()
                 let prompt = """
-                Evaluate this prompt across 5 dimensions. For each dimension, give a score from 1-5 and one-sentence feedback.
+                Evaluate this prompt across 4 dimensions. For each dimension, give a score from 1-5 and one-sentence feedback.
 
                 Prompt to evaluate: "\(userPrompt)"
 
                 Dimensions:
-                1. CLARITY (Air) — Does it have a clear role and task?
-                2. STRUCTURE (Water) — Is it logically ordered (Role→Task→Context→Constraints→Output)?
-                3. EFFICIENCY (Sunlight) — Is it concise? Are there filler words or redundancy?
-                4. CONTEXT (Soil) — Does it provide enough grounding context or examples?
-                5. SAFETY (Nutrients) — Does it contain PII, unsafe requests, or missing constraints?
+                1. CORE — Does it define Role, Task, Audience, Context, Constraints, and Output Format?
+                2. ADVANCED — Does it use advanced techniques like Chain of Thought, Step-by-Step, One/Few-Shot examples, or Tree of Thought?
+                3. EFFICIENCY — Is it concise? Does it avoid filler, unrequired pleasantries, and repeating words?
+                4. SAFETY — Is it free of PII (phone numbers, emails, names) and sensitive data?
 
                 Then provide:
-                - ADD: List of things to add (max 3 items)
+                - ADD: List of specific techniques to add WITH an example (max 4 items)
                 - REMOVE: List of things to remove or fix (max 3 items)
-                - IMPROVED: A rewritten, improved version of the prompt
+                - IMPROVED: A rewritten, improved version of the prompt that utilizes these advanced techniques
 
                 Format your response EXACTLY like this:
-                CLARITY: [1-5] [feedback]
-                STRUCTURE: [1-5] [feedback]
+                CORE: [1-5] [feedback]
+                ADVANCED: [1-5] [feedback]
                 EFFICIENCY: [1-5] [feedback]
-                CONTEXT: [1-5] [feedback]
                 SAFETY: [1-5] [feedback]
-                ADD: [item1] | [item2] | [item3]
-                REMOVE: [item1] | [item2] | [item3]
+                ADD: [technique: example] | [technique: example]
+                REMOVE: [item1] | [item2]
                 IMPROVED: [the improved prompt]
                 """
                 let response = try await session.respond(to: prompt)
@@ -282,11 +280,10 @@ struct PracticeView: View {
         let lines = text.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }
 
         let dimensionKeys = [
-            ("CLARITY", "🌬️", "Clarity (Air)"),
-            ("STRUCTURE", "💧", "Structure (Water)"),
-            ("EFFICIENCY", "☀️", "Efficiency (Sunlight)"),
-            ("CONTEXT", "🌍", "Context (Soil)"),
-            ("SAFETY", "🛡️", "Safety (Nutrients)"),
+            ("CORE", "🎯", "Core Elements"),
+            ("ADVANCED", "🧠", "Advanced Techniques"),
+            ("EFFICIENCY", "⚡", "Efficiency"),
+            ("SAFETY", "🛡️", "Safety")
         ]
 
         var dimensions: [DimensionScore] = []
@@ -327,23 +324,64 @@ struct PracticeView: View {
     }
 
     private func fallbackEvaluation() -> PromptEvaluation {
-        let words = userPrompt.split(separator: " ")
-        let hasRole = userPrompt.lowercased().contains("role") || userPrompt.contains("@")
-        let hasTask = words.count > 3
-        let isShort = words.count < 50
-        let hasContext = userPrompt.lowercased().contains("context") || userPrompt.lowercased().contains("example")
+        let lower = userPrompt.lowercased()
+        
+        // Good Heuristics
+        let hasRole = lower.contains("role") || lower.contains("act as") || lower.contains("you are")
+        let hasTask = lower.contains("write") || lower.contains("solve") || lower.contains("explain") || lower.contains("summarize") || lower.contains("create")
+        let hasAudience = lower.contains("for") || lower.contains("audience") || lower.contains("reader") || lower.contains("student")
+        let hasContext = lower.contains("context") || lower.contains("given the") || lower.contains("based on")
+        let hasConstraint = lower.contains("under") || lower.contains("words") || lower.contains("max") || lower.contains("only") || lower.contains("limit")
+        let hasOutput = lower.contains("json") || lower.contains("format") || lower.contains("bullet") || lower.contains("table")
+        
+        let hasCoT = lower.contains("explain reasoning") || lower.contains("think about") || lower.contains("chain of thought")
+        let hasStepByStep = lower.contains("step-by-step") || lower.contains("step by step") || lower.contains("first,")
+        let hasExamples = lower.contains("example:") || lower.contains("for instance") || lower.contains("e.g.") || lower.contains("one-shot") || lower.contains("few-shot")
+        let hasToT = lower.contains("tree of thought") || lower.contains("paths") || lower.contains("options") || lower.contains("brainstorm")
+        
+        // Bad Heuristics
+        let hasFiller = lower.contains("basically") || lower.contains("umm") || lower.contains("kind of")
+        let hasUnrequired = lower.contains("please") || lower.contains("if you don't mind") || lower.contains("wondering if")
+        let hasRepeating = lower.contains("again") || lower.contains("as i said")
+        let hasPII = lower.contains("ssn") || lower.contains("phone:") || lower.contains("@") || lower.contains("123-")
+        
+        // Scoring logic
+        let coreHits = [hasRole, hasTask, hasAudience, hasContext, hasConstraint, hasOutput].filter { $0 }.count
+        let advancedHits = [hasCoT, hasStepByStep, hasExamples, hasToT].filter { $0 }.count
+        let efficiencyIssues = [hasFiller, hasUnrequired, hasRepeating].filter { $0 }.count
+        let safetyIssues = hasPII ? 1 : 0
+        
+        let coreScore = max(1, min(5, (coreHits * 5) / 6))
+        let advancedScore = max(1, min(5, (advancedHits * 5) / 4 + 1))
+        let efficiencyScore = max(1, 5 - (efficiencyIssues * 2))
+        let safetyScore = hasPII ? 1 : 5
+        
+        var missingToImprove: [String] = []
+        if !hasRole { missingToImprove.append("Add a Role (e.g. 'Act as a Senior Data Analyst')") }
+        if !hasOutput { missingToImprove.append("Define Output Format (e.g. 'Format as a JSON object')") }
+        if !hasConstraint { missingToImprove.append("Add Constraints (e.g. 'Keep it under 150 words')") }
+        if !hasStepByStep { missingToImprove.append("Use Step-by-Step (e.g. 'Break down the steps')") }
+        if !hasCoT { missingToImprove.append("Use Chain of Thought (e.g. 'Explain reasoning before answering')") }
+        if !hasExamples { missingToImprove.append("Add One/Few-Shot Examples (e.g. 'Example: 2+2=4')") }
+        
+        var removes: [String] = []
+        if hasFiller { removes.append("Remove filler words ('basically', 'kind of')") }
+        if hasUnrequired { removes.append("Remove unrequired pleasantries ('please', 'if you don't mind')") }
+        if hasRepeating { removes.append("Remove repeating redundant statements ('as I said before')") }
+        if hasPII { removes.append("Remove personal data (phone numbers, emails, SSNs)") }
+        
+        let overall = (coreScore + advancedScore + efficiencyScore + safetyScore) / 4
 
         return PromptEvaluation(
-            overallScore: (hasRole ? 1 : 0) + (hasTask ? 1 : 0) + (isShort ? 1 : 0) + (hasContext ? 1 : 0) + 1,
+            overallScore: overall,
             dimensions: [
-                DimensionScore(emoji: "🌬️", name: "Clarity", score: hasRole ? 4 : 2, feedback: hasRole ? "Has a role defined" : "Add a clear role (@educator, @analyst)"),
-                DimensionScore(emoji: "💧", name: "Structure", score: hasTask ? 3 : 2, feedback: "Structure could be improved with Role→Task→Context order"),
-                DimensionScore(emoji: "☀️", name: "Efficiency", score: isShort ? 4 : 2, feedback: isShort ? "Reasonably concise" : "Too verbose — compress filler words"),
-                DimensionScore(emoji: "🌍", name: "Context", score: hasContext ? 4 : 2, feedback: hasContext ? "Has context grounding" : "Add context or examples"),
-                DimensionScore(emoji: "🛡️", name: "Safety", score: 4, feedback: "No obvious PII detected"),
+                DimensionScore(emoji: "🎯", name: "Core Elements", score: coreScore, feedback: "Found \(coreHits)/6 core elements (Role, Task, Context, Audience, Constraint, Output)"),
+                DimensionScore(emoji: "🧠", name: "Advanced Techniques", score: advancedScore, feedback: "Found \(advancedHits)/4 advanced techniques (CoT, One-Shot, Step-by-stp, ToT)"),
+                DimensionScore(emoji: "⚡", name: "Efficiency", score: efficiencyScore, feedback: efficiencyIssues == 0 ? "Prompt is concise and efficient" : "Prompt contains filler or unrequired words that waste tokens"),
+                DimensionScore(emoji: "🛡️", name: "Safety", score: safetyScore, feedback: hasPII ? "Privacy risk detected! Remove personal information" : "No PII detected"),
             ],
-            addSuggestions: hasRole ? [] : ["Add a role (@educator)", "Add output format (→ bullet list)"],
-            removeSuggestions: isShort ? [] : ["Remove filler words", "Compress verbose phrases"],
+            addSuggestions: Array(missingToImprove.prefix(4)),
+            removeSuggestions: removes,
             improvedPrompt: ""
         )
     }
