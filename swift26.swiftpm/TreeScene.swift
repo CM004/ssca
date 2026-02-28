@@ -15,8 +15,19 @@ class TreeScene: SKScene, ObservableObject {
     private let tileSize: CGFloat = 8.0
 
     override func didMove(to view: SKView) {
-        backgroundColor = SKColor(white: 0.96, alpha: 1.0)
-        drawSky()
+        backgroundColor = .clear
+
+        // Forest background image
+        if let path = Bundle.main.path(forResource: "forest_bg", ofType: "png"),
+           let uiImage = UIImage(contentsOfFile: path) {
+            let texture = SKTexture(image: uiImage)
+            let bg = SKSpriteNode(texture: texture)
+            bg.position = CGPoint(x: size.width / 2, y: size.height / 2)
+            bg.size = size
+            bg.zPosition = -1
+            addChild(bg)
+        }
+
         drawGround()
         drawTrunk()
         drawInitialCanopy()
@@ -29,40 +40,6 @@ class TreeScene: SKScene, ObservableObject {
         node.position = CGPoint(x: x, y: y)
         node.zPosition = z
         return node
-    }
-
-    // MARK: - Sky
-
-    private func drawSky() {
-        // Gradient sky with pixel bands
-        let skyColors: [SKColor] = [
-            SKColor(red: 0.78, green: 0.88, blue: 0.93, alpha: 1.0), // light blue top
-            SKColor(red: 0.82, green: 0.91, blue: 0.95, alpha: 1.0),
-            SKColor(red: 0.86, green: 0.93, blue: 0.96, alpha: 1.0),
-            SKColor(red: 0.90, green: 0.95, blue: 0.97, alpha: 1.0), // lighter near horizon
-        ]
-        let bandHeight = size.height / CGFloat(skyColors.count)
-        for (i, color) in skyColors.enumerated() {
-            let band = SKSpriteNode(color: color, size: CGSize(width: size.width, height: bandHeight + 2))
-            band.position = CGPoint(x: size.width / 2, y: size.height - bandHeight * CGFloat(i) - bandHeight / 2)
-            band.zPosition = 0
-            addChild(band)
-        }
-
-        // Mountain silhouette with tiles
-        let mountainColors = [
-            SKColor(red: 0.65, green: 0.72, blue: 0.80, alpha: 0.5),
-            SKColor(red: 0.60, green: 0.68, blue: 0.76, alpha: 0.4),
-        ]
-        let mountainY: CGFloat = 150
-        for col in stride(from: CGFloat(0), to: size.width, by: tileSize) {
-            // Create gentle mountain shapes
-            let mountainHeight = 40 + 30 * sin(col * 0.015) + 20 * sin(col * 0.03 + 1)
-            for row in stride(from: CGFloat(0), to: mountainHeight, by: tileSize) {
-                let ci = Int.random(in: 0..<mountainColors.count)
-                addChild(tile(x: col, y: mountainY + row, color: mountainColors[ci], z: 1))
-            }
-        }
     }
 
     // MARK: - Ground
@@ -146,8 +123,9 @@ class TreeScene: SKScene, ObservableObject {
 
         drawCanopyTiles(centerX: centerX, centerY: centerY, colors: wiltedColors, name: "canopy_tile")
 
-        // Fog overlay — scatter grey tiles on top
-        for _ in 0..<60 {
+        // Fog overlay — dense fog before Air stage clears it
+        // Layer 1: small scattered fog tiles
+        for _ in 0..<80 {
             let fogTile = SKSpriteNode(
                 color: SKColor(white: 0.85, alpha: 0.4),
                 size: CGSize(width: tileSize * 2, height: tileSize * 2)
@@ -157,6 +135,34 @@ class TreeScene: SKScene, ObservableObject {
                 y: CGFloat.random(in: 100...(size.height - 20))
             )
             fogTile.zPosition = 50
+            fogTile.name = "fog_tile"
+            addChild(fogTile)
+        }
+        // Layer 2: larger, denser fog patches
+        for _ in 0..<50 {
+            let fogTile = SKSpriteNode(
+                color: SKColor(white: 0.80, alpha: 0.5),
+                size: CGSize(width: tileSize * CGFloat.random(in: 3...5), height: tileSize * CGFloat.random(in: 3...4))
+            )
+            fogTile.position = CGPoint(
+                x: CGFloat.random(in: 0...size.width),
+                y: CGFloat.random(in: 80...(size.height - 10))
+            )
+            fogTile.zPosition = 51
+            fogTile.name = "fog_tile"
+            addChild(fogTile)
+        }
+        // Layer 3: thick fog band across the middle
+        for _ in 0..<40 {
+            let fogTile = SKSpriteNode(
+                color: SKColor(white: 0.90, alpha: 0.6),
+                size: CGSize(width: tileSize * CGFloat.random(in: 4...8), height: tileSize * CGFloat.random(in: 2...4))
+            )
+            fogTile.position = CGPoint(
+                x: CGFloat.random(in: 0...size.width),
+                y: CGFloat.random(in: 200...400)
+            )
+            fogTile.zPosition = 52
             fogTile.name = "fog_tile"
             addChild(fogTile)
         }
@@ -223,14 +229,16 @@ class TreeScene: SKScene, ObservableObject {
         }
     }
 
-    // Stage 2: Water — blue droplet tiles fall, canopy greens more
+    // Stage 2: Water — water absorbed by roots, xylem carries it up to canopy
     private func animateWater() {
         let centerX = size.width / 2
         let dropColors: [SKColor] = [
             SKColor(red: 0.30, green: 0.60, blue: 0.90, alpha: 0.8),
             SKColor(red: 0.25, green: 0.55, blue: 0.85, alpha: 0.7),
+            SKColor(red: 0.35, green: 0.65, blue: 0.95, alpha: 0.75),
         ]
 
+        // Water droplets rising UP from roots through trunk to canopy (xylem)
         let emitter = SKAction.run { [weak self] in
             guard let self else { return }
             let ci = Int.random(in: 0..<dropColors.count)
@@ -238,27 +246,69 @@ class TreeScene: SKScene, ObservableObject {
                 color: dropColors[ci],
                 size: CGSize(width: self.tileSize, height: self.tileSize)
             )
+            // Start from root area (soil level)
             drop.position = CGPoint(
-                x: centerX + CGFloat.random(in: -15...15),
-                y: 350
+                x: centerX + CGFloat.random(in: -12...12),
+                y: 70
             )
             drop.zPosition = 12
+            drop.alpha = 0.6
             self.addChild(drop)
+
+            // Rise up through trunk to canopy
             drop.run(SKAction.sequence([
-                SKAction.moveTo(y: 80, duration: 1.5),
-                SKAction.fadeOut(withDuration: 0.3),
+                SKAction.group([
+                    SKAction.moveTo(y: 380, duration: 2.0),
+                    SKAction.fadeAlpha(to: 0.3, duration: 2.0),
+                ]),
+                SKAction.fadeOut(withDuration: 0.2),
                 SKAction.removeFromParent(),
             ]))
         }
-        run(SKAction.repeatForever(SKAction.sequence([emitter, SKAction.wait(forDuration: 0.3)])))
+        run(SKAction.repeatForever(SKAction.sequence([emitter, SKAction.wait(forDuration: 0.25)])))
 
-        // Deepen canopy green
+        // Water droplets moving toward roots (absorption)
+        let absorbTargets: [(CGFloat, CGFloat)] = [
+            (-80, 30), (-50, 20), (-30, 40),   // left root tips
+            (80, 30), (50, 20), (30, 40),       // right root tips
+            (0, 10),                             // taproot tip
+        ]
+        let absorbEmitter = SKAction.run { [weak self] in
+            guard let self else { return }
+            let target = absorbTargets[Int.random(in: 0..<absorbTargets.count)]
+            let startX = centerX + target.0 + CGFloat.random(in: -20...20)
+            let startY = target.1 + CGFloat.random(in: -15...15)
+            let drop = SKSpriteNode(
+                color: SKColor(red: 0.35, green: 0.65, blue: 0.95, alpha: 0.7),
+                size: CGSize(width: self.tileSize, height: self.tileSize)
+            )
+            drop.position = CGPoint(x: startX, y: startY)
+            drop.zPosition = 11
+            self.addChild(drop)
+            // Move toward root and fade (absorbed)
+            let rootX = centerX + target.0 * 0.5
+            let rootY = target.1 + 30
+            drop.run(SKAction.sequence([
+                SKAction.group([
+                    SKAction.move(to: CGPoint(x: rootX, y: rootY), duration: 0.8),
+                    SKAction.fadeOut(withDuration: 0.8),
+                    SKAction.scale(to: 0.5, duration: 0.8),
+                ]),
+                SKAction.removeFromParent(),
+            ]))
+        }
+        run(SKAction.repeatForever(SKAction.sequence([absorbEmitter, SKAction.wait(forDuration: 0.4)])))
+
+        // Deepen canopy green as water reaches leaves
         enumerateChildNodes(withName: "canopy_tile") { node, _ in
             if let sprite = node as? SKSpriteNode {
-                sprite.run(SKAction.colorize(
-                    with: SKColor(red: 0.15, green: 0.55, blue: 0.18, alpha: 1.0),
-                    colorBlendFactor: 0.6, duration: 1.5
-                ))
+                sprite.run(SKAction.sequence([
+                    SKAction.wait(forDuration: 1.5), // wait for water to rise
+                    SKAction.colorize(
+                        with: SKColor(red: 0.15, green: 0.55, blue: 0.18, alpha: 1.0),
+                        colorBlendFactor: 0.6, duration: 1.0
+                    ),
+                ]))
             }
         }
     }
@@ -292,9 +342,12 @@ class TreeScene: SKScene, ObservableObject {
                     SKAction.wait(forDuration: Double.random(in: 0...0.5)),
                     SKAction.colorize(
                         with: [
-                            SKColor(red: 0.18, green: 0.62, blue: 0.15, alpha: 1.0),
-                            SKColor(red: 0.22, green: 0.58, blue: 0.20, alpha: 1.0),
-                            SKColor(red: 0.15, green: 0.65, blue: 0.12, alpha: 1.0),
+                            SKColor(red: 0.18, green: 0.62, blue: 0.15, alpha: 1.0),  // bright green
+                            SKColor(red: 0.22, green: 0.58, blue: 0.20, alpha: 1.0),  // warm green
+                            SKColor(red: 0.15, green: 0.65, blue: 0.12, alpha: 1.0),  // vivid green
+                            SKColor(red: 0.28, green: 0.55, blue: 0.18, alpha: 1.0),  // sun-kissed green
+                            SKColor(red: 0.12, green: 0.52, blue: 0.14, alpha: 1.0),  // deeper forest
+                            SKColor(red: 0.30, green: 0.65, blue: 0.25, alpha: 1.0),  // light lime
                         ].randomElement()!,
                         colorBlendFactor: 0.8, duration: 0.8
                     ),
@@ -306,24 +359,82 @@ class TreeScene: SKScene, ObservableObject {
     // Stage 4: Soil — root tiles extend, leaf buds appear
     private func animateSoil() {
         let centerX = size.width / 2
-        let rootColor = SKColor(red: 0.45, green: 0.30, blue: 0.15, alpha: 1.0)
 
-        // Extend root tiles underground
-        let rootPaths: [(dx: CGFloat, dy: CGFloat)] = [
-            (-1, -0.5), (-1.2, -0.3), (1, -0.5), (1.1, -0.4), (0, -1),
+        // Yellowish-orange root colors
+        let rootColors: [SKColor] = [
+            SKColor(red: 0.85, green: 0.70, blue: 0.35, alpha: 1.0),
+            SKColor(red: 0.80, green: 0.65, blue: 0.30, alpha: 0.95),
+            SKColor(red: 0.90, green: 0.75, blue: 0.40, alpha: 1.0),
         ]
-        for (pi, path) in rootPaths.enumerated() {
-            for i in 0..<8 {
-                let root = tile(
-                    x: centerX + path.dx * CGFloat(i) * tileSize,
-                    y: 75 + path.dy * CGFloat(i) * tileSize,
-                    color: rootColor, z: 4
-                )
-                root.alpha = 0
-                addChild(root)
-                root.run(SKAction.sequence([
-                    SKAction.wait(forDuration: Double(pi) * 0.15 + Double(i) * 0.08),
-                    SKAction.fadeIn(withDuration: 0.3),
+        let trunkBaseY: CGFloat = 75
+        let s = tileSize
+
+        // Helper to draw a smooth root line
+        func drawRoot(points: [(CGFloat, CGFloat)], delay: Double) {
+            for (i, pt) in points.enumerated() {
+                let ci = Int.random(in: 0..<rootColors.count)
+                let r = tile(x: centerX + pt.0, y: trunkBaseY + pt.1, color: rootColors[ci], z: 4)
+                r.alpha = 0
+                r.name = "root_tile"
+                addChild(r)
+                r.run(SKAction.sequence([
+                    SKAction.wait(forDuration: delay + Double(i) * 0.04),
+                    SKAction.fadeIn(withDuration: 0.25),
+                ]))
+            }
+        }
+
+        // Pre-compute root point arrays
+        var taproot: [(CGFloat, CGFloat)] = []
+        for i in 0..<12 { taproot.append((0, -CGFloat(i) * s)) }
+
+        var leftA: [(CGFloat, CGFloat)] = []
+        for i in 0..<10 { let f = CGFloat(i); leftA.append((-f * s, -2 * s - f * s * 0.4)) }
+        var leftB: [(CGFloat, CGFloat)] = []
+        for i in 0..<8 { let f = CGFloat(i); leftB.append((-f * s * 0.8, -5 * s - f * s * 0.5)) }
+        var leftC: [(CGFloat, CGFloat)] = []
+        for i in 0..<6 { let f = CGFloat(i); leftC.append((-f * s * 0.6, -8 * s - f * s * 0.3)) }
+
+        var rightA: [(CGFloat, CGFloat)] = []
+        for i in 0..<10 { let f = CGFloat(i); rightA.append((f * s, -2 * s - f * s * 0.4)) }
+        var rightB: [(CGFloat, CGFloat)] = []
+        for i in 0..<8 { let f = CGFloat(i); rightB.append((f * s * 0.8, -5 * s - f * s * 0.5)) }
+        var rightC: [(CGFloat, CGFloat)] = []
+        for i in 0..<6 { let f = CGFloat(i); rightC.append((f * s * 0.6, -8 * s - f * s * 0.3)) }
+
+        // Central taproot
+        drawRoot(points: taproot, delay: 0)
+        // Left laterals
+        drawRoot(points: leftA, delay: 0.3)
+        drawRoot(points: leftB, delay: 0.5)
+        drawRoot(points: leftC, delay: 0.7)
+        // Right laterals
+        drawRoot(points: rightA, delay: 0.4)
+        drawRoot(points: rightB, delay: 0.6)
+        drawRoot(points: rightC, delay: 0.8)
+
+        // Fine hair roots at tips
+        let hairColor = SKColor(red: 0.90, green: 0.78, blue: 0.45, alpha: 0.7)
+        let hairTips: [(CGFloat, CGFloat)] = [
+            (-10 * s, -2 * s - 10 * s * 0.4),
+            (-8 * s * 0.8, -5 * s - 8 * s * 0.5),
+            (-6 * s * 0.6, -8 * s - 6 * s * 0.3),
+            (10 * s, -2 * s - 10 * s * 0.4),
+            (8 * s * 0.8, -5 * s - 8 * s * 0.5),
+            (6 * s * 0.6, -8 * s - 6 * s * 0.3),
+            (0, -12 * s),
+        ]
+        for (hi, tip) in hairTips.enumerated() {
+            for j in 0..<3 {
+                let hx = tip.0 + CGFloat.random(in: -6...6)
+                let hy = tip.1 - CGFloat(j) * s * 0.5
+                let hair = tile(x: centerX + hx, y: trunkBaseY + hy, color: hairColor, z: 4)
+                hair.alpha = 0
+                hair.name = "root_tile"
+                addChild(hair)
+                hair.run(SKAction.sequence([
+                    SKAction.wait(forDuration: 1.0 + Double(hi) * 0.1 + Double(j) * 0.05),
+                    SKAction.fadeIn(withDuration: 0.2),
                 ]))
             }
         }
