@@ -72,14 +72,6 @@ class PromptRainScene: SKScene, ObservableObject {
     @Published var fmEvaluation: String? = nil
     @Published var currentTargetPrompt: String = ""
 
-    private let targetPrompts: [String] = [
-        "Role: scientist.\nExplain causes for high schoolers\n→ bullet points.",
-        "Role: therapist.\nSummarize coping strategies for teens\nunder 100 words → numbered list.",
-        "Role: legal advisor.\nDraft a summary for a small business owner.\nIndia jurisdiction only. plain English.",
-        "Role: UX Researcher.\nDesign a survey for mobile users\nfocus on accessibility → tabular format.",
-        "Role: Senior Data Analyst.\nSummarize Q3 earnings report for executives\nunder 150 words → JSON format."
-    ]
-
     private var basket: SKSpriteNode!
     private var scoreLabel: SKLabelNode!
     private var countsLabel: SKLabelNode!
@@ -91,32 +83,70 @@ class PromptRainScene: SKScene, ObservableObject {
     private var toxicMultiplier: Double = 1.0
     private var gameStarted = false
 
-    // Sequence bonus tracking
-    // Scenario state
-    // Fragment pools
-    private let goodFragments: [PromptFragment] = [
-        PromptFragment(text: "Role: Senior Data Analyst", category: .role, emoji: "🍎"),
-        PromptFragment(text: "Act as an Expert Educator", category: .role, emoji: "🍎"),
-        PromptFragment(text: "You are a UX Researcher", category: .role, emoji: "🍎"),
-        
-        PromptFragment(text: "Summarize the Q3 earnings report", category: .task, emoji: "🍊"),
-        PromptFragment(text: "Extract key risks from this text", category: .task, emoji: "🍊"),
-        PromptFragment(text: "Explain quantum computing simply", category: .task, emoji: "🍊"),
-        
-        PromptFragment(text: "Audience: High school students", category: .audience, emoji: "🍋"),
-        PromptFragment(text: "Target: Non-technical managers", category: .audience, emoji: "🍋"),
-        PromptFragment(text: "Readers: Medical professionals", category: .audience, emoji: "🍋"),
-        
-        PromptFragment(text: "Context: 2024 Climate Data attached", category: .context, emoji: "🍏"),
-        PromptFragment(text: "Given the patient's prior history", category: .context, emoji: "🍏"),
-        
-        PromptFragment(text: "Constraint: Under 150 words", category: .constraint, emoji: "🫐"),
-        PromptFragment(text: "Rule: No speculation or filler", category: .constraint, emoji: "🫐"),
-         PromptFragment(text: "Tone: Professional but approachable", category: .constraint, emoji: "🫐"),
-        
-        PromptFragment(text: "Output: A markdown bulleted list", category: .output, emoji: "🍇"),
-        PromptFragment(text: "Format response as strict JSON", category: .output, emoji: "🍇"),
+    struct TargetScenario {
+        let title: String
+        let promptText: String
+        let goodFragments: [PromptFragment]
+    }
+
+    private let scenarios: [TargetScenario] = [
+        TargetScenario(
+            title: "Climate Change",
+            promptText: "Role: scientist.\nExplain causes for high schoolers\n→ bullet points.",
+            goodFragments: [
+                PromptFragment(text: "Role: scientist", category: .role, emoji: "🍎"),
+                PromptFragment(text: "Explain causes", category: .task, emoji: "🍊"),
+                PromptFragment(text: "for high schoolers", category: .audience, emoji: "🍋"),
+                PromptFragment(text: "→ bullet points", category: .output, emoji: "🍇")
+            ]
+        ),
+        TargetScenario(
+            title: "Mental Health",
+            promptText: "Role: therapist.\nSummarize coping strategies for teens\nunder 100 words → numbered list.",
+            goodFragments: [
+                PromptFragment(text: "Role: therapist", category: .role, emoji: "🍎"),
+                PromptFragment(text: "Summarize coping strategies", category: .task, emoji: "🍊"),
+                PromptFragment(text: "for teens", category: .audience, emoji: "🍋"),
+                PromptFragment(text: "under 100 words", category: .constraint, emoji: "🫐"),
+                PromptFragment(text: "→ numbered list", category: .output, emoji: "🍇")
+            ]
+        ),
+        TargetScenario(
+            title: "Legal Advice",
+            promptText: "Role: legal advisor.\nDraft a summary for a small business owner.\nIndia jurisdiction only. plain English.",
+            goodFragments: [
+                PromptFragment(text: "Role: legal advisor", category: .role, emoji: "🍎"),
+                PromptFragment(text: "Draft a summary", category: .task, emoji: "🍊"),
+                PromptFragment(text: "for a small business owner", category: .audience, emoji: "🍋"),
+                PromptFragment(text: "India jurisdiction only", category: .constraint, emoji: "🫐"),
+                PromptFragment(text: "plain English", category: .output, emoji: "🍇")
+            ]
+        ),
+        TargetScenario(
+            title: "UX Research",
+            promptText: "Role: UX Researcher.\nDesign a survey for mobile users\nfocus on accessibility → tabular format.",
+            goodFragments: [
+                PromptFragment(text: "Role: UX Researcher", category: .role, emoji: "🍎"),
+                PromptFragment(text: "Design a survey", category: .task, emoji: "🍊"),
+                PromptFragment(text: "for mobile users", category: .audience, emoji: "🍋"),
+                PromptFragment(text: "focus on accessibility", category: .constraint, emoji: "🫐"),
+                PromptFragment(text: "→ tabular format", category: .output, emoji: "🍇")
+            ]
+        ),
+        TargetScenario(
+            title: "Data Analysis",
+            promptText: "Role: Senior Data Analyst.\nSummarize Q3 earnings report for executives\nunder 150 words → JSON format.",
+            goodFragments: [
+                PromptFragment(text: "Role: Senior Data Analyst", category: .role, emoji: "🍎"),
+                PromptFragment(text: "Summarize Q3 earnings report", category: .task, emoji: "🍊"),
+                PromptFragment(text: "for executives", category: .audience, emoji: "🍋"),
+                PromptFragment(text: "under 150 words", category: .constraint, emoji: "🫐"),
+                PromptFragment(text: "→ JSON format", category: .output, emoji: "🍇")
+            ]
+        )
     ]
+
+    private var currentTargetScenario: TargetScenario?
 
     private let toxicFragments: [PromptFragment] = [
         PromptFragment(text: "John Smith", category: .pii, emoji: "🥀"),
@@ -227,7 +257,8 @@ class PromptRainScene: SKScene, ObservableObject {
     // MARK: - Game Control
 
     func pickNewTargetPrompt() {
-        currentTargetPrompt = targetPrompts.randomElement() ?? targetPrompts[0]
+        currentTargetScenario = scenarios.randomElement()
+        currentTargetPrompt = currentTargetScenario?.promptText ?? "Loading prompt..."
     }
 
     func startGame() {
@@ -373,7 +404,9 @@ class PromptRainScene: SKScene, ObservableObject {
         // Decide good vs toxic based on multiplier
         let toxicChance = min(0.65, 0.3 * toxicMultiplier)
         let isToxic = Double.random(in: 0...1) < toxicChance
-        let pool = isToxic ? toxicFragments : goodFragments
+        let goodPool = currentTargetScenario?.goodFragments ?? []
+        // Fallback to random fragment if pool is empty
+        let pool = isToxic ? toxicFragments : goodPool
         guard !pool.isEmpty else { return }
         
         if (!isToxic) {
