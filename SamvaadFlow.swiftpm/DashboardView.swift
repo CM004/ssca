@@ -215,20 +215,6 @@ struct DashboardView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 12))
-
-                // CTAs
-                HStack(spacing: 12) {
-                    Button {
-                        appState.reset()
-                    } label: {
-                        Text("Try Another Domain Prompt")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .tint(.green)
-                }
             }
             .padding(24)
         }
