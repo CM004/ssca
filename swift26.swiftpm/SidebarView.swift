@@ -56,18 +56,6 @@ struct SidebarView: View {
                 Text("Results").foregroundStyle(.green.opacity(0.7))
             }
 
-            // Domain
-            Section {
-                Picker("Select Domain :", selection: $appState.selectedDomain) {
-                    ForEach(["Education", "Health", "Legal", "Finance", "Support"], id: \.self) { (domain: String) in
-                        Text(domain).tag(domain)
-                    }
-                }
-                .pickerStyle(.menu)
-                .tint(.green)
-            } header: {
-                Text("Domain").foregroundStyle(.green.opacity(0.7))
-            }
 
             // Game
             Section {
