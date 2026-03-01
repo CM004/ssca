@@ -35,6 +35,7 @@ struct Stage5_NutrientsView: View {
     private var unsafePrompt: String {
         var p = appState.currentPrompt
         let isHealthcare = appState.selectedDomain.lowercased() == "healthcare"
+        let isLegal = appState.selectedDomain.lowercased() == "legal"
 
         if isHealthcare {
             if p.lowercased().contains("context:") {
@@ -49,6 +50,20 @@ struct Stage5_NutrientsView: View {
                 p.insert(contentsOf: " Attending: Dr. Priya Nair (priya.nair@apollo.in).", at: p.index(after: lastDot))
             } else {
                 p += " Attending: Dr. Priya Nair (priya.nair@apollo.in)."
+            }
+        } else if isLegal {
+            if p.lowercased().contains("context:") {
+                p = p.replacingOccurrences(
+                    of: "Context:",
+                    with: "Context: Client: Arjun Mehta, Founder, NovaPay Pvt. Ltd. (CIN: U72900MH2021PTC123456). Deal value: ₹48L/yr."
+                )
+            } else {
+                p = "Client: Arjun Mehta, Founder, NovaPay Pvt. Ltd. (CIN: U72900MH2021PTC123456). Deal value: ₹48L/yr. " + p
+            }
+            if let lastDot = p.lastIndex(of: ".") {
+                p.insert(contentsOf: " Contract signed by: cfo@novapay.in.", at: p.index(after: lastDot))
+            } else {
+                p += " Contract signed by: cfo@novapay.in."
             }
         } else {
             // Inject institution + email after "educator" or "Role:"
@@ -96,6 +111,9 @@ struct Stage5_NutrientsView: View {
             if appState.selectedDomain.lowercased() == "healthcare" {
                 items.append(PIITarget(text: "discharge summary", type: "task", isPII: false))
                 items.append(PIITarget(text: "structured headers", type: "format", isPII: false))
+            } else if appState.selectedDomain.lowercased() == "legal" {
+                items.append(PIITarget(text: "SaaS vendor agreement", type: "context", isPII: false))
+                items.append(PIITarget(text: "numbered risk list", type: "format", isPII: false))
             } else {
                 items.append(PIITarget(text: "explain", type: "task verb", isPII: false))
                 items.append(PIITarget(text: "environmental", type: "topic detail", isPII: false))

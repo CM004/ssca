@@ -15,27 +15,38 @@ struct ContentView: View {
     @StateObject private var treeScene = TreeScene(size: CGSize(width: 320, height: 600))
 
     var body: some View {
-        NavigationSplitView {
-            SidebarView()
-        } content: {
-            centerPanel
-                .background(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.03, green: 0.08, blue: 0.05),
-                            Color(red: 0.05, green: 0.12, blue: 0.06),
-                            Color(red: 0.02, green: 0.06, blue: 0.04),
-                        ],
-                        startPoint: .top, endPoint: .bottom
-                    )
-                    .ignoresSafeArea()
-                )
-        } detail: {
-            SpriteView(scene: treeScene)
-                .ignoresSafeArea()
+        Group {
+            if appState.currentStage == 8 {
+                NavigationSplitView {
+                    SidebarView()
+                } detail: {
+                    PromptRainView()
+                }
+                .navigationSplitViewStyle(.balanced)
+            } else {
+                NavigationSplitView {
+                    SidebarView()
+                } content: {
+                    centerPanel
+                        .background(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.03, green: 0.08, blue: 0.05),
+                                    Color(red: 0.05, green: 0.12, blue: 0.06),
+                                    Color(red: 0.02, green: 0.06, blue: 0.04),
+                                ],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                            .ignoresSafeArea()
+                        )
+                } detail: {
+                    SpriteView(scene: treeScene)
+                        .ignoresSafeArea()
+                }
+                .navigationSplitViewStyle(.balanced)
+                .navigationSplitViewColumnWidth(ideal: 400)
+            }
         }
-        .navigationSplitViewStyle(.balanced)
-        .navigationSplitViewColumnWidth(ideal: 400)
         .environmentObject(appState)
         .onChange(of: appState.completedStages) { _, newValue in
             if let latest = newValue.max() {

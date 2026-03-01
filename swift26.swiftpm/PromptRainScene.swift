@@ -148,6 +148,13 @@ class PromptRainScene: SKScene, ObservableObject {
 
     override func didMove(to view: SKView) {
         backgroundColor = SKColor(red: 0.02, green: 0.06, blue: 0.04, alpha: 1)
+        
+        let bg = SKSpriteNode(imageNamed: "game_scene")
+        bg.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        bg.size = size
+        bg.zPosition = -100
+        addChild(bg)
+        
         physicsWorld.gravity = CGVector(dx: 0, dy: -2.0)
 
         setupFloor()
@@ -220,7 +227,7 @@ class PromptRainScene: SKScene, ObservableObject {
         countsLabel = SKLabelNode(text: "Good: 0 | Bad: 0")
         countsLabel.fontSize = 14
         countsLabel.fontName = "Menlo-Bold"
-        countsLabel.fontColor = SKColor(red: 0.8, green: 0.9, blue: 0.8, alpha: 1)
+        countsLabel.fontColor = .black
         countsLabel.position = CGPoint(x: size.width / 2, y: size.height - 35)
         countsLabel.zPosition = 100
         countsLabel.horizontalAlignmentMode = .center
@@ -229,7 +236,7 @@ class PromptRainScene: SKScene, ObservableObject {
         timerLabel = SKLabelNode(text: "⏱ 45s")
         timerLabel.fontSize = 14
         timerLabel.fontName = "Menlo-Bold"
-        timerLabel.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1)
+        timerLabel.fontColor = .black
         timerLabel.position = CGPoint(x: size.width - 60, y: size.height - 30)
         timerLabel.zPosition = 100
         timerLabel.horizontalAlignmentMode = .right

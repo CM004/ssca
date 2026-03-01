@@ -219,7 +219,12 @@ struct DashboardView: View {
                 // CTAs
                 HStack(spacing: 12) {
                     Button {
-                        appState.selectedDomain = appState.selectedDomain == "Education" ? "Healthcare" : "Education"
+                        let domains = ["Education", "Healthcare", "Legal"]
+                        if let ind = domains.firstIndex(of: appState.selectedDomain) {
+                            appState.selectedDomain = domains[(ind + 1) % domains.count]
+                        } else {
+                            appState.selectedDomain = "Education"
+                        }
                         appState.goToStage(0)
                     } label: {
                         Text("Try Another Domain Prompt")

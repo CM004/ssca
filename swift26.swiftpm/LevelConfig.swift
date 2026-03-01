@@ -279,7 +279,86 @@ enum Curriculum {
         """
     )
     
+    static let legal = DomainConfig(
+        startingPrompt: "Tell me about this contract.",
+        stage1Blocks: [
+            DragBlock(text: "You are a legal contract analyst", type: .role, emoji: "⚖️"),
+            DragBlock(text: "Review and identify risky clauses", type: .task, emoji: "🔍"),
+            DragBlock(text: "Tell me about this contract", type: .distractor, emoji: "💬"),
+            DragBlock(text: "What do you think", type: .distractor, emoji: "🤔")
+        ],
+        stage1ResultPrompt: "You are a legal contract analyst. Review and identify risky clauses in this contract.",
+        stage2Items: [
+            ReorderItem(text: "You are a legal contract analyst", category: "Role", correctPosition: 0),
+            ReorderItem(text: "Review and identify risky clauses", category: "Task", correctPosition: 1),
+            ReorderItem(text: "in a SaaS vendor agreement", category: "Contract Type", correctPosition: 2),
+            ReorderItem(text: "for a non-legal startup founder", category: "Audience", correctPosition: 3),
+            ReorderItem(text: "focusing on liability, termination, and IP ownership", category: "Clause Focus", correctPosition: 4),
+            ReorderItem(text: "present findings as a numbered risk list", category: "Output Format", correctPosition: 5)
+        ],
+        stage2ResultPrompt: "You are a legal contract analyst. Review and identify risky clauses in a SaaS vendor agreement for a non-legal startup founder, focusing on liability, termination, and IP ownership. Present findings as a numbered risk list.",
+        stage3Words: [
+            "You", "are", "a", "legal", "contract", "analyst", ".",
+            "Review", "and", "identify", "risky", "clauses", "in", "a", "SaaS",
+            "vendor", "agreement", "for", "a", "non-legal", "startup", "founder", ",",
+            "focusing", "on", "liability", ",", "termination", ",", "and", "IP", "ownership", ".",
+            "Present", "findings", "as", "a", "numbered", "risk", "list", "."
+        ],
+        stage3RedundantIndices: [0, 1, 2, 8, 9, 12, 13, 17, 18, 23, 24, 29, 33, 34, 35, 36],
+        stage3TargetRange: 15...25,
+        stage3OvercompressedThreshold: 12,
+        stage3ResultPrompt: "Role: legal contract analyst. Review SaaS vendor agreement for non-legal startup founder: flag risky clauses [liability, termination, IP ownership] → numbered risk list.",
+        stage4ContextPlaceholder: "Jurisdiction: India. B2B SaaS contract, annual subscription, pre-signing review.",
+        stage4ExampleInput: "Flag risks in an NDA termination clause.",
+        stage4ExampleOutput: "1. [Termination] — Either party may terminate with 7-day notice.\nRisk: Too short; leaves no time to transition data securely.",
+        stage4ResultPrompt: """
+        Role: legal contract analyst.
+        Context: India jurisdiction, B2B SaaS annual contract, pre-signing.
+        Review SaaS vendor agreement for non-legal startup founder:
+        flag risky clauses [liability, termination, IP ownership]
+        → numbered risk list.
+        Example format:
+          Input: Flag NDA termination clause.
+          Output: 1. [Clause Type] — summary. Risk: plain-language explanation.
+        """,
+        stage5UnsafePrompt: """
+        Role: legal contract analyst.
+        Context: Client: Arjun Mehta, Founder, NovaPay Pvt. Ltd. (CIN: U72900MH2021PTC123456). Deal value: ₹48L/yr. Contract signed by: cfo@novapay.in.
+        Review SaaS vendor agreement for non-legal startup founder:
+        flag risky clauses [liability, termination, IP ownership]
+        → numbered risk list.
+        """,
+        stage5PIITargets: [
+            PIITarget(text: "Arjun Mehta", type: "name", isPII: true),
+            PIITarget(text: "NovaPay Pvt. Ltd.", type: "company", isPII: true),
+            PIITarget(text: "CIN: U72900MH2021PTC123456", type: "identifier", isPII: true),
+            PIITarget(text: "₹48L/yr", type: "financials", isPII: true),
+            PIITarget(text: "cfo@novapay.in", type: "email", isPII: true),
+            PIITarget(text: "SaaS vendor agreement", type: "context", isPII: false),
+            PIITarget(text: "liability, termination", type: "clauses", isPII: false),
+            PIITarget(text: "numbered risk list", type: "format", isPII: false)
+        ],
+        stage5Constraints: [
+            ("Flag risks only. Do not provide formal legal advice", true),
+            ("Add disclaimer: consult a qualified lawyer before signing", true),
+            ("Max 300 words", true)
+        ],
+        stage5FinalPrompt: """
+        Role: legal contract analyst.
+        Context: India jurisdiction, B2B SaaS annual contract, pre-signing review for [Company]. Client: [Client Name], non-legal founder.
+        Review SaaS vendor agreement: flag risky clauses [liability, termination, IP ownership] → numbered risk list.
+        Flag risks only. Do not provide formal legal advice.
+        Add disclaimer: consult a qualified lawyer before signing. Max 300 words.
+        Example format:
+          Input: Flag NDA termination clause.
+          Output: 1. [Clause Type] — summary. Risk: plain-language explanation.
+        """
+    )
+    
     static func get(domain: String) -> DomainConfig {
-        return domain.lowercased() == "healthcare" ? healthcare : education
+        let lowered = domain.lowercased()
+        if lowered == "healthcare" { return healthcare }
+        if lowered == "legal" { return legal }
+        return education
     }
 }
