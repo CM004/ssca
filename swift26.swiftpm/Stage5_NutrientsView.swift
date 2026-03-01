@@ -16,13 +16,6 @@ struct Stage5_NutrientsView: View {
     private let config = Curriculum.stage(for: 5)!
     private var domainConfig: DomainConfig { Curriculum.get(domain: appState.selectedDomain) }
 
-    // Hardcoded PII that Julie "accidentally" adds
-    private let injectedPII: [(text: String, type: String)] = [
-        ("Greenfield High School", "institution"),
-        ("mrs.sharma@greenfield.edu", "email"),
-        ("student ID #4521", "identifier"),
-    ]
-
     @State private var originalUnsafePrompt: String = ""
     @State private var shuffledItems: [PIITarget] = []
     @State private var selectedItems: Set<UUID> = []
@@ -41,26 +34,44 @@ struct Stage5_NutrientsView: View {
     // Build the "unsafe" prompt = Stage 4 prompt with PII injected
     private var unsafePrompt: String {
         var p = appState.currentPrompt
-        // Inject institution + email after "educator" or "Role:"
-        if p.lowercased().contains("educator") {
-            p = p.replacingOccurrences(
-                of: "educator",
-                with: "educator at Greenfield High School (teacher: mrs.sharma@greenfield.edu)"
-            )
-        }
-        // Inject student ID after "Context:" or before audience
-        if p.lowercased().contains("context:") {
-            p = p.replacingOccurrences(
-                of: "Context:",
-                with: "Context: for student ID #4521."
-            )
-        } else if p.lowercased().contains("grade") {
-            p = p.replacingOccurrences(
-                of: "Grade",
-                with: "for student ID #4521. Grade"
-            )
+        let isHealthcare = appState.selectedDomain.lowercased() == "healthcare"
+
+        if isHealthcare {
+            if p.lowercased().contains("context:") {
+                p = p.replacingOccurrences(
+                    of: "Context:",
+                    with: "Context: Patient: John Mehta, DOB 12/03/1979, ID #MH4521, Ward 3B,"
+                )
+            } else {
+                p = "Patient: John Mehta, DOB 12/03/1979, ID #MH4521, Ward 3B. " + p
+            }
+            if let lastDot = p.lastIndex(of: ".") {
+                p.insert(contentsOf: " Attending: Dr. Priya Nair (priya.nair@apollo.in).", at: p.index(after: lastDot))
+            } else {
+                p += " Attending: Dr. Priya Nair (priya.nair@apollo.in)."
+            }
         } else {
-            p += " for student ID #4521."
+            // Inject institution + email after "educator" or "Role:"
+            if p.lowercased().contains("educator") {
+                p = p.replacingOccurrences(
+                    of: "educator",
+                    with: "educator at Greenfield High School (teacher: mrs.sharma@greenfield.edu)"
+                )
+            }
+            // Inject student ID after "Context:" or before audience
+            if p.lowercased().contains("context:") {
+                p = p.replacingOccurrences(
+                    of: "Context:",
+                    with: "Context: for student ID #4521."
+                )
+            } else if p.lowercased().contains("grade") {
+                p = p.replacingOccurrences(
+                    of: "Grade",
+                    with: "for student ID #4521. Grade"
+                )
+            } else {
+                p += " for student ID #4521."
+            }
         }
         return p
     }
@@ -68,38 +79,27 @@ struct Stage5_NutrientsView: View {
     // Build items dynamically from the actual prompt + PII
     private func buildItems() -> [PIITarget] {
         var items: [PIITarget] = []
+        let promptText = unsafePrompt.lowercased()
 
-        // Real PII — must be redacted
-        for pii in injectedPII {
-            items.append(PIITarget(text: pii.text, type: pii.type, isPII: true))
-        }
-
-        // Safe decoys — extract real keywords from current prompt
-        let prompt = appState.currentPrompt.lowercased()
-
-        if prompt.contains("educator") || prompt.contains("role") {
-            items.append(PIITarget(text: "science educator", type: "role", isPII: false))
-        }
-        if prompt.contains("climate") {
-            items.append(PIITarget(text: "climate change", type: "topic", isPII: false))
-        }
-        if prompt.contains("grade") || prompt.contains("school") || prompt.contains("student") {
-            items.append(PIITarget(text: "Grade 10", type: "context", isPII: false))
-        }
-        if prompt.contains("150") || prompt.contains("word") {
-            items.append(PIITarget(text: "150 words", type: "constraint", isPII: false))
-        }
-        if prompt.contains("bullet") || prompt.contains("→") {
-            items.append(PIITarget(text: "bullet points", type: "format", isPII: false))
-        }
-        if prompt.contains("causes") || prompt.contains("effects") || prompt.contains("&") {
-            items.append(PIITarget(text: "causes & effects", type: "content", isPII: false))
+        for target in domainConfig.stage5PIITargets {
+            if target.isPII {
+                items.append(target)
+            } else {
+                if promptText.contains(target.text.lowercased()) {
+                    items.append(target)
+                }
+            }
         }
 
         // Ensure at least a few decoys
         if items.filter({ !$0.isPII }).isEmpty {
-            items.append(PIITarget(text: "explain", type: "task verb", isPII: false))
-            items.append(PIITarget(text: "environmental", type: "topic detail", isPII: false))
+            if appState.selectedDomain.lowercased() == "healthcare" {
+                items.append(PIITarget(text: "discharge summary", type: "task", isPII: false))
+                items.append(PIITarget(text: "structured headers", type: "format", isPII: false))
+            } else {
+                items.append(PIITarget(text: "explain", type: "task verb", isPII: false))
+                items.append(PIITarget(text: "environmental", type: "topic detail", isPII: false))
+            }
         }
 
         return items
