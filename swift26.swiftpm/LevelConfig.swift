@@ -56,20 +56,45 @@ struct PIITarget: Identifiable, Hashable {
     let isPII: Bool   // true = must redact, false = safe keyword (decoy)
 }
 
+// MARK: - Domain Config Struct
+
+struct DomainConfig {
+    let startingPrompt: String
+    var startingTokens: Int {
+        startingPrompt.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
+    }
+
+    // Stage 1
+    let stage1Blocks: [DragBlock]
+    let stage1ResultPrompt: String
+
+    // Stage 2
+    let stage2Items: [ReorderItem]
+    let stage2ResultPrompt: String
+
+    // Stage 3
+    let stage3Words: [String]
+    let stage3RedundantIndices: Set<Int>
+    let stage3TargetRange: ClosedRange<Int>
+    let stage3OvercompressedThreshold: Int
+    let stage3ResultPrompt: String
+
+    // Stage 4
+    let stage4ContextPlaceholder: String
+    let stage4ExampleInput: String
+    let stage4ExampleOutput: String
+    let stage4ResultPrompt: String
+
+    // Stage 5
+    let stage5UnsafePrompt: String
+    let stage5PIITargets: [PIITarget]
+    let stage5Constraints: [(label: String, defaultOn: Bool)]
+    let stage5FinalPrompt: String
+}
+
 // MARK: - Curriculum Data Store
 
 enum Curriculum {
-
-    // MARK: - Starting Prompt
-    static let startingPrompt = "Tell me something about climate change."
-    static var startingTokens: Int {
-        startingPrompt
-            .components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-            .count
-    }
-
-    // MARK: - Stage Configs
 
     static let stages: [StageConfig] = [
         StageConfig(
@@ -108,103 +133,153 @@ enum Curriculum {
         stages.first { $0.id == id }
     }
 
-    // MARK: - Stage 1: Drag & Drop Blocks
-
-    static let stage1Blocks: [DragBlock] = [
-        DragBlock(text: "You are a science educator", type: .role, emoji: "🎓"),
-        DragBlock(text: "Explain the main causes and effects", type: .task, emoji: "📋"),
-        DragBlock(text: "Could you please maybe help me understand", type: .distractor, emoji: "💬"),
-        DragBlock(text: "I was wondering if you could possibly", type: .distractor, emoji: "✍️"),
-    ]
-
-    static let stage1ResultPrompt = "You are a science educator. Explain the main causes and effects of climate change."
-
-    // MARK: - Stage 2: Reorder Items
-
-    static let stage2Items: [ReorderItem] = [
-        ReorderItem(text: "You are a science educator", category: "Role", correctPosition: 0),
-        ReorderItem(text: "Explain the main causes and effects of climate change", category: "Task", correctPosition: 1),
-        ReorderItem(text: "for a high school student", category: "Audience", correctPosition: 2),
-        ReorderItem(text: "focusing on environmental and economic impacts", category: "Constraint", correctPosition: 3),
-        ReorderItem(text: "Use bullet points", category: "Output Format", correctPosition: 4),
-    ]
-
-    static let stage2ResultPrompt = "You are a science educator. Explain the main causes and effects of climate change for a high school student, focusing on environmental and economic impacts. Use bullet points."
-
-    // MARK: - Stage 3: Words to compress
-
-    /// The 42-token prompt from Stage 2 split into tappable words.
-    static let stage3Words: [String] = [
-        "You", "are", "a", "science", "educator", ".",
-        "Explain", "the", "main", "causes", "and",
-        "effects", "of", "climate", "change", "for",
-        "a", "high", "school", "student", ",",
-        "focusing", "on", "environmental", "and",
-        "economic", "impacts", ".", "Use", "bullet",
-        "points", "."
-    ]
-
-    /// Words that are safe to remove (redundant filler).
-    static let stage3RedundantIndices: Set<Int> = [
-        0, 1, 2, // "You are a" → replaced by "Role:"
-        7,       // "the"
-        10, 11, 12, // "and effects of" → compress to "causes & effects"
-        21, 22,  // "focusing on" → replaced by ":"
-        28,      // "Use" → replaced by "→"
-    ]
-
-    static let stage3TargetRange = 20...26
-    static let stage3OvercompressedThreshold = 16
-
-    static let stage3ResultPrompt = "Role: science educator. Explain climate change causes & effects for high schoolers: environmental & economic impacts → bullet points."
-
-    // MARK: - Stage 4: Context defaults
-
-    static let stage4ContextPlaceholder = "For a Grade 10 science revision worksheet."
-    static let stage4ExampleInput = "Explain deforestation causes."
-    static let stage4ExampleOutput = "• Cause 1: Agricultural expansion\n• Cause 2: Logging\n• Effect: Loss of biodiversity"
-
-    static let stage4ResultPrompt = """
-    Role: science educator. Context: Grade 10 revision worksheet. Explain climate change causes & effects for high schoolers: environmental & economic impacts → bullet points.
-    Example:
-    Input: Explain deforestation causes.
-    Output: • Cause 1 / Cause 2 / Effect
-    """
-
-    // MARK: - Stage 5: PII & Constraints
-
-    static let stage5UnsafePrompt = """
-    Role: science educator at Greenfield High School (teacher: mrs.sharma@greenfield.edu). Context: Grade 10 revision for student ID #4521. Explain climate change causes & effects for high schoolers: environmental & economic impacts → bullet points. Keep response under 150 words. Use scientific consensus only.
-    """
-
-    static let stage5PIITargets: [PIITarget] = [
-        // Real PII — must be redacted
-        PIITarget(text: "Greenfield High School", type: "institution", isPII: true),
-        PIITarget(text: "mrs.sharma@greenfield.edu", type: "email", isPII: true),
-        PIITarget(text: "student ID #4521", type: "identifier", isPII: true),
-        // Safe decoys — should NOT be redacted
-        PIITarget(text: "science educator", type: "role", isPII: false),
-        PIITarget(text: "climate change", type: "topic", isPII: false),
-        PIITarget(text: "Grade 10", type: "context", isPII: false),
-        PIITarget(text: "150 words", type: "constraint", isPII: false),
-        PIITarget(text: "bullet points", type: "format", isPII: false),
-    ]
-
-    static let stage5Constraints: [(label: String, defaultOn: Bool)] = [
-        ("Keep response under 150 words", true),
-        ("Use only established scientific consensus", true),
-        ("Avoid speculation", false),
-    ]
-
-    static let stage5FinalPrompt = """
-    Role: science educator. Context: Grade 10 revision worksheet. Explain climate change causes & effects for high schoolers: environmental & economic impacts → bullet points. Keep response under 150 words. Use scientific consensus only.
-    Example:
-    Input: Explain deforestation causes.
-    Output: • Cause 1 / Cause 2 / Effect
-    """
-
     // MARK: - Dashboard Data
-
     static let badPromptTokenCost = 303 // 4 repair exchanges
     static let goodPromptTokenCost = 136 // 1 clean exchange
+
+    // MARK: - Domains
+
+    static let education = DomainConfig(
+        startingPrompt: "Tell me something about climate change.",
+        stage1Blocks: [
+            DragBlock(text: "You are a science educator", type: .role, emoji: "🎓"),
+            DragBlock(text: "Explain the main causes and effects", type: .task, emoji: "📋"),
+            DragBlock(text: "Could you please maybe help me understand", type: .distractor, emoji: "💬"),
+            DragBlock(text: "I was wondering if you could possibly", type: .distractor, emoji: "✍️")
+        ],
+        stage1ResultPrompt: "You are a science educator. Explain the main causes and effects of climate change.",
+        stage2Items: [
+            ReorderItem(text: "You are a science educator", category: "Role", correctPosition: 0),
+            ReorderItem(text: "Explain the main causes and effects of climate change", category: "Task", correctPosition: 1),
+            ReorderItem(text: "for a high school student", category: "Audience", correctPosition: 2),
+            ReorderItem(text: "focusing on environmental and economic impacts", category: "Constraint", correctPosition: 3),
+            ReorderItem(text: "Use bullet points", category: "Output Format", correctPosition: 4)
+        ],
+        stage2ResultPrompt: "You are a science educator. Explain the main causes and effects of climate change for a high school student, focusing on environmental and economic impacts. Use bullet points.",
+        stage3Words: [
+            "You", "are", "a", "science", "educator", ".",
+            "Explain", "the", "main", "causes", "and",
+            "effects", "of", "climate", "change", "for",
+            "a", "high", "school", "student", ",",
+            "focusing", "on", "environmental", "and",
+            "economic", "impacts", ".", "Use", "bullet",
+            "points", "."
+        ],
+        stage3RedundantIndices: [0, 1, 2, 7, 10, 11, 12, 21, 22, 28],
+        stage3TargetRange: 20...26,
+        stage3OvercompressedThreshold: 16,
+        stage3ResultPrompt: "Role: science educator. Explain climate change causes & effects for high schoolers: environmental & economic impacts → bullet points.",
+        stage4ContextPlaceholder: "For a Grade 10 science revision worksheet.",
+        stage4ExampleInput: "Explain deforestation causes.",
+        stage4ExampleOutput: "• Cause 1: Agricultural expansion\n• Cause 2: Logging\n• Effect: Loss of biodiversity",
+        stage4ResultPrompt: """
+        Role: science educator. Context: Grade 10 revision worksheet. Explain climate change causes & effects for high schoolers: environmental & economic impacts → bullet points.
+        Example:
+        Input: Explain deforestation causes.
+        Output: • Cause 1 / Cause 2 / Effect
+        """,
+        stage5UnsafePrompt: """
+        Role: science educator at Greenfield High School (teacher: mrs.sharma@greenfield.edu). Context: Grade 10 revision for student ID #4521. Explain climate change causes & effects for high schoolers: environmental & economic impacts → bullet points. Keep response under 150 words. Use scientific consensus only.
+        """,
+        stage5PIITargets: [
+            PIITarget(text: "Greenfield High School", type: "institution", isPII: true),
+            PIITarget(text: "mrs.sharma@greenfield.edu", type: "email", isPII: true),
+            PIITarget(text: "student ID #4521", type: "identifier", isPII: true),
+            PIITarget(text: "science educator", type: "role", isPII: false),
+            PIITarget(text: "climate change", type: "topic", isPII: false),
+            PIITarget(text: "Grade 10", type: "context", isPII: false),
+            PIITarget(text: "150 words", type: "constraint", isPII: false),
+            PIITarget(text: "bullet points", type: "format", isPII: false)
+        ],
+        stage5Constraints: [
+            ("Keep response under 150 words", true),
+            ("Use only established scientific consensus", true),
+            ("Avoid speculation", false)
+        ],
+        stage5FinalPrompt: """
+        Role: science educator. Context: Grade 10 revision worksheet. Explain climate change causes & effects for high schoolers: environmental & economic impacts → bullet points. Keep response under 150 words. Use scientific consensus only.
+        Example:
+        Input: Explain deforestation causes.
+        Output: • Cause 1 / Cause 2 / Effect
+        """
+    )
+
+    static let healthcare = DomainConfig(
+        startingPrompt: "Write something about a patient.",
+        stage1Blocks: [
+            DragBlock(text: "You are a clinical documentation assistant", type: .role, emoji: "🩺"),
+            DragBlock(text: "Write a discharge summary", type: .task, emoji: "📝"),
+            DragBlock(text: "tell me about what happened with", type: .distractor, emoji: "💬"),
+            DragBlock(text: "help me write something", type: .distractor, emoji: "✍️")
+        ],
+        stage1ResultPrompt: "You are a clinical documentation assistant. Write a discharge summary for a patient.",
+        stage2Items: [
+            ReorderItem(text: "You are a clinical documentation assistant", category: "Role", correctPosition: 0),
+            ReorderItem(text: "Write a discharge summary", category: "Task", correctPosition: 1),
+            ReorderItem(text: "for the referring physician", category: "Audience", correctPosition: 2),
+            ReorderItem(text: "covering diagnosis, treatment given, and follow-up plan", category: "Constraint", correctPosition: 3),
+            ReorderItem(text: "Use structured sections with headers", category: "Output Format", correctPosition: 4)
+        ],
+        stage2ResultPrompt: "You are a clinical documentation assistant. Write a discharge summary for the referring physician, covering diagnosis, treatment given, and follow-up plan. Use structured sections with headers.",
+        stage3Words: [
+            "You", "are", "a", "clinical", "documentation", "assistant", ".", 
+            "Write", "a", "discharge", "summary", "for", 
+            "the", "referring", "physician", ",", "covering", 
+            "diagnosis", ",", "treatment", "given", ",", "and", 
+            "follow-up", "plan", ".", "Use", "structured", 
+            "sections", "with", "headers", "."
+        ],
+        stage3RedundantIndices: [0, 1, 2, 8, 12, 16, 20, 22, 26, 29], // Removes "You are a", "a", "the", "covering", "given", "and", "Use", "with"
+        stage3TargetRange: 16...24,
+        stage3OvercompressedThreshold: 12,
+        stage3ResultPrompt: "Role: clinical documentation assistant. Draft discharge summary for referring physician: diagnosis, treatment, follow-up plan → structured headers.",
+        stage4ContextPlaceholder: "Patient: 45-year-old, post-appendectomy, 2-day stay",
+        stage4ExampleInput: "Knee replacement discharge.",
+        stage4ExampleOutput: "## Diagnosis / ## Treatment / ## Follow-up",
+        stage4ResultPrompt: """
+        Role: clinical documentation assistant.
+        Context: 45-year-old patient, post-appendectomy, 2-day stay, no complications.
+        Draft discharge summary for referring physician: diagnosis, treatment, follow-up plan → structured headers.
+        Example format:
+          Input: Knee replacement discharge.
+          Output: ## Diagnosis / ## Treatment / ## Follow-up
+        """,
+        stage5UnsafePrompt: """
+        Role: clinical documentation assistant.
+        Context: Patient: John Mehta, DOB 12/03/1979, ID #MH4521, Ward 3B, post-appendectomy, 2-day stay, no complications.
+        Attending: Dr. Priya Nair (priya.nair@apollo.in).
+        Draft discharge summary for referring physician: diagnosis, treatment, follow-up plan → structured headers.
+        Example format:
+          Input: Knee replacement discharge.
+          Output: ## Diagnosis / ## Treatment / ## Follow-up
+        """,
+        stage5PIITargets: [
+            PIITarget(text: "John Mehta", type: "name", isPII: true),
+            PIITarget(text: "DOB 12/03/1979", type: "date", isPII: true),
+            PIITarget(text: "ID #MH4521", type: "identifier", isPII: true),
+            PIITarget(text: "Ward 3B", type: "location", isPII: true),
+            PIITarget(text: "priya.nair@apollo.in", type: "email", isPII: true),
+            PIITarget(text: "post-appendectomy", type: "context", isPII: false),
+            PIITarget(text: "discharge summary", type: "task", isPII: false),
+            PIITarget(text: "structured headers", type: "format", isPII: false)
+        ],
+        stage5Constraints: [
+            ("Do not speculate on diagnosis.", true),
+            ("Use only provided clinical facts.", true),
+            ("Keep summary under 200 words.", true)
+        ],
+        stage5FinalPrompt: """
+        Role: clinical documentation assistant.
+        Context: 45-year-old patient, post-appendectomy, 2-day inpatient stay, no complications. Attending: [Attending Physician].
+        Draft discharge summary for referring physician: diagnosis, treatment, follow-up plan → structured headers.
+        Do not speculate. Use only provided facts. Max 200 words.
+        Example format:
+          Input: Knee replacement discharge.
+          Output: ## Diagnosis / ## Treatment / ## Follow-up
+        """
+    )
+    
+    static func get(domain: String) -> DomainConfig {
+        return domain.lowercased() == "healthcare" ? healthcare : education
+    }
 }

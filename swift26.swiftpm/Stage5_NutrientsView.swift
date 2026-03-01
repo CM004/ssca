@@ -14,6 +14,7 @@ struct Stage5_NutrientsView: View {
 
     @EnvironmentObject var appState: AppState
     private let config = Curriculum.stage(for: 5)!
+    private var domainConfig: DomainConfig { Curriculum.get(domain: appState.selectedDomain) }
 
     // Hardcoded PII that Julie "accidentally" adds
     private let injectedPII: [(text: String, type: String)] = [
@@ -22,9 +23,10 @@ struct Stage5_NutrientsView: View {
         ("student ID #4521", "identifier"),
     ]
 
+    @State private var originalUnsafePrompt: String = ""
     @State private var shuffledItems: [PIITarget] = []
     @State private var selectedItems: Set<UUID> = []
-    @State private var constraints: [(label: String, isOn: Bool)] = Curriculum.stage5Constraints.map { ($0.label, $0.defaultOn) }
+    @State private var constraints: [(label: String, isOn: Bool)] = []
     @State private var isEvaluating = false
     @State private var result: StageScore? = nil
     @State private var showConfetti = false
@@ -247,6 +249,10 @@ struct Stage5_NutrientsView: View {
         }
         .onDisappear { speech.stop() }
         .onAppear {
+            if originalUnsafePrompt.isEmpty {
+                originalUnsafePrompt = domainConfig.stage5UnsafePrompt
+                constraints = domainConfig.stage5Constraints.map { ($0.label, $0.defaultOn) }
+            }
             if shuffledItems.isEmpty {
                 shuffledItems = buildItems().shuffled()
             }

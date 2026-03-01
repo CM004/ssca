@@ -13,7 +13,8 @@ struct IntroStageView: View {
     @StateObject private var speech = SpeechManager()
 
     private var speakText: String {
-        "Welcome to SamvaadFlow. This tree can talk with AI but its glow is flickering because the communication is not strong. All of its energy is wasted in unclear prompts. Each missing element represents one fundamental rule of writing prompts that AI can actually use well. Your job: restore the glowing tree, one element at a time. Your starting prompt is: \(Curriculum.startingPrompt). This prompt has \(Curriculum.startingTokens) tokens. It will travel through all 5 stages. Each stage will fix one broken element."
+        let domainConfig = Curriculum.get(domain: appState.selectedDomain)
+        return "Welcome to SamvaadFlow. This tree can talk with AI but its glow is flickering because the communication is not strong. All of its energy is wasted in unclear prompts. Each missing element represents one fundamental rule of writing prompts that AI can actually use well. Your job: restore the glowing tree, one element at a time. Your starting prompt is: \(domainConfig.startingPrompt). This prompt has \(domainConfig.startingTokens) tokens. It will travel through all 5 stages. Each stage will fix one broken element."
     }
 
     var body: some View {
@@ -45,7 +46,7 @@ struct IntroStageView: View {
                         .font(.headline)
                         .foregroundStyle(.green.opacity(0.9))
 
-                    Text(Curriculum.startingPrompt)
+                    Text(Curriculum.get(domain: appState.selectedDomain).startingPrompt)
                         .font(.body.monospaced())
                         .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -57,7 +58,7 @@ struct IntroStageView: View {
                         )
 
                     HStack {
-                        Label("\(Curriculum.startingTokens) tokens", systemImage: "number")
+                        Label("\(Curriculum.get(domain: appState.selectedDomain).startingTokens) tokens", systemImage: "number")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.green.opacity(0.7))
 

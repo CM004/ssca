@@ -349,7 +349,6 @@ struct PracticeView: View {
         let coreHits = [hasRole, hasTask, hasAudience, hasContext, hasConstraint, hasOutput].filter { $0 }.count
         let advancedHits = [hasCoT, hasStepByStep, hasExamples, hasToT].filter { $0 }.count
         let efficiencyIssues = [hasFiller, hasUnrequired, hasRepeating].filter { $0 }.count
-        let safetyIssues = hasPII ? 1 : 0
         
         let coreScore = max(1, min(5, (coreHits * 5) / 6))
         let advancedScore = max(1, min(5, (advancedHits * 5) / 4 + 1))

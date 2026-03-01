@@ -39,7 +39,8 @@ struct Stage3_SunlightView: View {
 
     @EnvironmentObject var appState: AppState
     private let config = Curriculum.stage(for: 3)!
-    private let words = Curriculum.stage3Words
+    private var domainConfig: DomainConfig { Curriculum.get(domain: appState.selectedDomain) }
+    private var words: [String] { domainConfig.stage3Words }
 
     @State private var struckIndices: Set<Int> = []
     @State private var compressedText: String = ""
@@ -103,8 +104,8 @@ struct Stage3_SunlightView: View {
         let symbols: [Character] = ["→", "&", "@", "|", "~", "!", "[", "]", "{", "}", ":", "=", "+", "-"]
         return symbols.contains(where: { finalPrompt.contains($0) })
     }
-    private var isInTargetRange: Bool { Curriculum.stage3TargetRange.contains(finalTokenCount) }
-    private var isOvercompressed: Bool { finalTokenCount < Curriculum.stage3OvercompressedThreshold }
+    private var isInTargetRange: Bool { domainConfig.stage3TargetRange.contains(finalTokenCount) }
+    private var isOvercompressed: Bool { finalTokenCount < domainConfig.stage3OvercompressedThreshold }
 
     var body: some View {
         ScrollView {

@@ -59,7 +59,7 @@ struct SidebarView: View {
             // Domain
             Section {
                 Picker("Select Domain :", selection: $appState.selectedDomain) {
-                    ForEach(["Education", "Health", "Legal", "Finance", "Support"], id: \.self) { (domain: String) in
+                    ForEach(["Education", "Healthcare"], id: \.self) { (domain: String) in
                         Text(domain).tag(domain)
                     }
                 }

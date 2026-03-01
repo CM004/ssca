@@ -21,18 +21,30 @@ final class AppState: ObservableObject {
     // MARK: - Prompt Evolution
 
     /// The prompt that evolves through all 5 stages.
-    @Published var currentPrompt: String = "Tell me something about climate change."
+    @Published var currentPrompt: String
 
     /// Token count snapshot after each stage. Index 0 = starting prompt.
-    @Published var tokenHistory: [Int] = [Curriculum.startingTokens]
+    @Published var tokenHistory: [Int]
 
     // MARK: - Domain
 
-    @Published var selectedDomain: String = "Education"
+    @Published var selectedDomain: String = "Education" {
+        didSet {
+            reset()
+        }
+    }
 
     // MARK: - Stage Scores
 
     @Published var stageScores: [Int: StageScore] = [:]
+
+    // MARK: - Initializer
+    
+    init() {
+        let domainConfig = Curriculum.get(domain: "Education")
+        currentPrompt = domainConfig.startingPrompt
+        tokenHistory = [domainConfig.startingTokens]
+    }
 
     // MARK: - Computed
 
@@ -96,8 +108,9 @@ final class AppState: ObservableObject {
     func reset() {
         currentStage = 0
         completedStages = []
-        currentPrompt = "Tell me something about climate change."
-        tokenHistory = [Curriculum.startingTokens]
+        let domainConfig = Curriculum.get(domain: selectedDomain)
+        currentPrompt = domainConfig.startingPrompt
+        tokenHistory = [domainConfig.startingTokens]
         stageScores = [:]
     }
 }

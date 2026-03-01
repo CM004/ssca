@@ -29,7 +29,7 @@ struct DashboardView: View {
         return zip(labels, data).map { ($0, $1) }
     }
 
-    private var startTokens: Int { appState.tokenHistory.first ?? Curriculum.startingTokens }
+    private var startTokens: Int { appState.tokenHistory.first ?? Curriculum.get(domain: appState.selectedDomain).startingTokens }
     private var finalTokens: Int { appState.tokenHistory.last ?? startTokens }
 
     private var badPromptConversationCost: Int { startTokens * badExchanges * 2 }
@@ -247,7 +247,7 @@ struct DashboardView: View {
             do {
                 let session = LanguageModelSession()
                 let prompt = """
-                A user sends this vague prompt to an AI: "\(Curriculum.startingPrompt)"
+                A user sends this vague prompt to an AI: "\(Curriculum.get(domain: appState.selectedDomain).startingPrompt)"
                 How many back-and-forth exchanges would typically be needed before the AI produces a satisfactory, complete answer?
                 Consider that the prompt lacks: clear role, audience, output format, constraints, context, and examples.
                 Respond with ONLY a single integer number between 2 and 8. Nothing else.
@@ -335,7 +335,7 @@ struct DashboardView: View {
                 let session = LanguageModelSession()
                 let context = """
                 App: SamvaadFlow — teaches prompt engineering through 5 stages (Air=Clarity, Water=Structure, Sunlight=Efficiency, Soil=Context, Nutrients=Safety).
-                Starting prompt: "\(Curriculum.startingPrompt)" (\(startTokens) tokens)
+                Starting prompt: "\(Curriculum.get(domain: appState.selectedDomain).startingPrompt)" (\(startTokens) tokens)
                 Final prompt: "\(appState.currentPrompt)" (\(finalTokens) tokens)
                 Token history: \(appState.tokenHistory)
                 Stages: \(appState.stageScores.sorted(by: { $0.key < $1.key }).map { "Stage \($0.key): \($0.value.earned)/\($0.value.total)" }.joined(separator: ", "))

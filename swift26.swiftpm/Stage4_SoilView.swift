@@ -64,6 +64,7 @@ struct Stage4_SoilView: View {
     
     @EnvironmentObject var appState: AppState
     private let config = Curriculum.stage(for: 4)!
+    private var domainConfig: DomainConfig { Curriculum.get(domain: appState.selectedDomain) }
     
     @State private var contextSentence: String = ""
     @State private var examples: [FewShotExample] = []
@@ -110,7 +111,7 @@ struct Stage4_SoilView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Context Sentence")
                         .font(.subheadline.weight(.medium))
-                    TextField("e.g. For a Grade 10 science revision worksheet", text: $contextSentence, axis: .vertical)
+                    TextField("e.g. \(domainConfig.stage4ContextPlaceholder)", text: $contextSentence, axis: .vertical)
                         .lineLimit(2...4)
                         .textFieldStyle(.roundedBorder)
                 }
@@ -246,12 +247,12 @@ struct Stage4_SoilView: View {
             }
             
             Text("Input:").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
-            TextField("e.g. What causes global warming?", text: $examples[index].input)
+            TextField("e.g. \(domainConfig.stage4ExampleInput)", text: $examples[index].input)
                 .textFieldStyle(.roundedBorder)
                 .font(.callout)
             
             Text("Output:").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
-            TextField("e.g. Greenhouse gas emissions from…", text: $examples[index].output, axis: .vertical)
+            TextField("e.g. \(domainConfig.stage4ExampleOutput)", text: $examples[index].output, axis: .vertical)
                 .lineLimit(2...3)
                 .textFieldStyle(.roundedBorder)
                 .font(.callout)

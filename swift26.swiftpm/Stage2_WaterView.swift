@@ -13,6 +13,7 @@ struct Stage2_WaterView: View {
 
     @EnvironmentObject var appState: AppState
     private let config = Curriculum.stage(for: 2)!
+    private var domainConfig: DomainConfig { Curriculum.get(domain: appState.selectedDomain) }
 
     @State private var items: [ReorderItem] = []
     @State private var isEvaluating = false
@@ -89,7 +90,7 @@ struct Stage2_WaterView: View {
                         emoji: "💧", title: "Water Structure Score",
                         score: result, ctaLabel: "Continue to Stage 3 : Sunlight"
                     ) {
-                        appState.completeStage(2, newPrompt: Curriculum.stage2ResultPrompt, score: result)
+                        appState.completeStage(2, newPrompt: domainConfig.stage2ResultPrompt, score: result)
                     }
                 }
             }
@@ -118,7 +119,7 @@ struct Stage2_WaterView: View {
             }
         }
         .onDisappear { speech.stop() }
-        .onAppear { if items.isEmpty { items = Curriculum.stage2Items.shuffled() } }
+        .onAppear { if items.isEmpty { items = domainConfig.stage2Items.shuffled() } }
     }
 
     // MARK: - Helpers
@@ -260,7 +261,7 @@ struct Stage2_WaterView: View {
                 let evalPrompt = """
                 Compare these two prompts:
                 User's prompt: "\(assembledPrompt)"
-                Correct prompt: "\(Curriculum.stage2ResultPrompt)"
+                Correct prompt: "\(domainConfig.stage2ResultPrompt)"
                 Evaluate if the user's prompt follows Role→Task→Audience→Constraint→OutputFormat structure.
                 Respond with JSON: {"orderCorrect": true/false, "feedback": "one sentence"}
                 """

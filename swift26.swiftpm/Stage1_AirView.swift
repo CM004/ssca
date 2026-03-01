@@ -13,7 +13,8 @@ struct Stage1_AirView: View {
     @EnvironmentObject var appState: AppState
 
     private let config = Curriculum.stage(for: 1)!
-    private let blocks = Curriculum.stage1Blocks
+    private var domainConfig: DomainConfig { Curriculum.get(domain: appState.selectedDomain) }
+    private var blocks: [DragBlock] { domainConfig.stage1Blocks }
 
     @State private var roleSlot: DragBlock? = nil
     @State private var taskSlot: DragBlock? = nil
@@ -25,7 +26,7 @@ struct Stage1_AirView: View {
     @StateObject private var speech = SpeechManager()
 
     private var speakText: String {
-        "Stage 1: Air, Clarity. \(config.conceptText) Your current starting prompt is: \(Curriculum.startingPrompt). Notice it is missing a clear role (who is the AI?), missing a task verb (what should it do?), and missing a bounded scope. Tap the available blocks to assign a role and a task to your prompt."  
+        "Stage 1: Air, Clarity. \(config.conceptText) Your current starting prompt is: \(domainConfig.startingPrompt). Notice it is missing a clear role (who is the AI?), missing a task verb (what should it do?), and missing a bounded scope. Tap the available blocks to assign a role and a task to your prompt."  
     }
 
     private var assembledPrompt: String {
@@ -131,7 +132,7 @@ struct Stage1_AirView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.red)
 
-            Text(Curriculum.startingPrompt)
+            Text(domainConfig.startingPrompt)
                 .font(.body.monospaced())
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
