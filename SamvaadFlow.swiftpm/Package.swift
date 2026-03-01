@@ -8,19 +8,19 @@ import PackageDescription
 import AppleProductTypes
 
 let package = Package(
-    name: "swift26",
+    name: "SamvaadFlow",
     platforms: [
         .iOS("26.0")
     ],
     products: [
         .iOSApplication(
-            name: "swift26",
+            name: "SamvaadFlow",
             targets: ["AppModule"],
             bundleIdentifier: "com.journeyHome.swift26",
             teamIdentifier: "LQXURPH4NG",
             displayVersion: "1.0",
             bundleVersion: "1",
-            appIcon: .placeholder(icon: .bowl),
+            appIcon: .asset("AppIcon"),
             accentColor: .presetColor(.pink),
             supportedDeviceFamilies: [
                 .pad,
@@ -31,7 +31,8 @@ let package = Package(
                 .landscapeRight,
                 .landscapeLeft,
                 .portraitUpsideDown(.when(deviceFamilies: [.pad]))
-            ]
+            ],
+            appCategory: .education
         )
     ],
     targets: [
