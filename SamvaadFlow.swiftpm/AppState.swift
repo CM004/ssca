@@ -21,10 +21,10 @@ final class AppState: ObservableObject {
     // MARK: - Prompt Evolution
 
     /// The prompt that evolves through all 5 stages.
-    @Published var currentPrompt: String = "Tell me something about climate change."
+    @Published var currentPrompt: String = Curriculum.education.startingPrompt
 
     /// Token count snapshot after each stage. Index 0 = starting prompt.
-    @Published var tokenHistory: [Int] = [Curriculum.startingTokens]
+    @Published var tokenHistory: [Int] = [Curriculum.education.startingTokens]
 
     // MARK: - Domain
 
@@ -94,11 +94,17 @@ final class AppState: ObservableObject {
     }
 
     func reset() {
+        let domain = Curriculum.config(for: selectedDomain)
         currentStage = 0
         completedStages = []
-        currentPrompt = "Tell me something about climate change."
-        tokenHistory = [Curriculum.startingTokens]
+        currentPrompt = domain.startingPrompt
+        tokenHistory = [domain.startingTokens]
         stageScores = [:]
+    }
+
+    func switchDomain(_ domain: String) {
+        selectedDomain = domain
+        reset()
     }
 }
 

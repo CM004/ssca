@@ -39,7 +39,7 @@ struct Stage3_SunlightView: View {
 
     @EnvironmentObject var appState: AppState
     private let config = Curriculum.stage(for: 3)!
-    private let words = Curriculum.stage3Words
+    private var domainConfig: DomainConfig { Curriculum.config(for: appState.selectedDomain) }
 
     @State private var struckIndices: Set<Int> = []
     @State private var compressedText: String = ""
@@ -62,7 +62,7 @@ struct Stage3_SunlightView: View {
     private var phase1Done: Bool { tokensRemoved >= 5 }
 
     private var keptWords: [String] {
-        words.enumerated().compactMap { idx, word in struckIndices.contains(idx) ? nil : word }
+        domainConfig.stage3Words.enumerated().compactMap { idx, word in struckIndices.contains(idx) ? nil : word }
     }
 
     /// Joins words, attaching punctuation to previous word without space
@@ -103,8 +103,8 @@ struct Stage3_SunlightView: View {
         let symbols: [Character] = ["→", "&", "@", "|", "~", "!", "[", "]", "{", "}", ":", "=", "+", "-"]
         return symbols.contains(where: { finalPrompt.contains($0) })
     }
-    private var isInTargetRange: Bool { Curriculum.stage3TargetRange.contains(finalTokenCount) }
-    private var isOvercompressed: Bool { finalTokenCount < Curriculum.stage3OvercompressedThreshold }
+    private var isInTargetRange: Bool { domainConfig.stage3TargetRange.contains(finalTokenCount) }
+    private var isOvercompressed: Bool { finalTokenCount < domainConfig.stage3OvercompressedThreshold }
 
     var body: some View {
         ScrollView {
@@ -279,7 +279,7 @@ struct Stage3_SunlightView: View {
     private var wordGrid: some View {
         let columns = [GridItem(.adaptive(minimum: 60), spacing: 6)]
         return LazyVGrid(columns: columns, spacing: 6) {
-            ForEach(Array(words.enumerated()), id: \.offset) { idx, word in
+            ForEach(Array(domainConfig.stage3Words.enumerated()), id: \.offset) { idx, word in
                 wordButton(idx: idx, word: word)
             }
         }

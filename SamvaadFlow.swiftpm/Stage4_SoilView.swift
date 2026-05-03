@@ -64,6 +64,7 @@ struct Stage4_SoilView: View {
     
     @EnvironmentObject var appState: AppState
     private let config = Curriculum.stage(for: 4)!
+    private var domainConfig: DomainConfig { Curriculum.config(for: appState.selectedDomain) }
     
     @State private var contextSentence: String = ""
     @State private var examples: [FewShotExample] = []

@@ -15,6 +15,10 @@ class TreeScene: SKScene, ObservableObject {
     private let tileSize: CGFloat = 8.0
 
     override func didMove(to view: SKView) {
+        setupScene()
+    }
+
+    private func setupScene() {
         backgroundColor = .clear
 
         // Forest background image
@@ -803,6 +807,15 @@ class TreeScene: SKScene, ObservableObject {
             SKAction.wait(forDuration: 2.0),
             SKAction.fadeIn(withDuration: 0.5),
         ]))
+    }
+
+    // MARK: - Reset Tree (called on domain switch)
+
+    func resetTree() {
+        completedStages = []
+        removeAllActions()
+        removeAllChildren()
+        setupScene()
     }
 }
 

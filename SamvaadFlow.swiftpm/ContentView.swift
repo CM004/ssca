@@ -12,6 +12,7 @@ import SpriteKit
 struct ContentView: View {
 
     @StateObject private var appState = AppState()
+    @StateObject private var store = StoreManager()
     @StateObject private var treeScene = TreeScene(size: CGSize(width: 320, height: 600))
 
     var body: some View {
@@ -37,10 +38,14 @@ struct ContentView: View {
         .navigationSplitViewStyle(.balanced)
         .navigationSplitViewColumnWidth(ideal: 400)
         .environmentObject(appState)
+        .environmentObject(store)
         .onChange(of: appState.completedStages) { _, newValue in
             if let latest = newValue.max() {
                 treeScene.animateStageCompletion(latest)
             }
+        }
+        .onChange(of: appState.selectedDomain) { _, _ in
+            treeScene.resetTree()
         }
     }
 
