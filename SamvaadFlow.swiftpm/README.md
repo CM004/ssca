@@ -43,7 +43,7 @@ SamvaadFlow.swiftpm
 ├── PromptRainView.swift       # SpriteKit mini-game (prompt rain)
 ├── PracticeView.swift         # Free-form practice with evaluation
 ├── FoundationModelEvaluator.swift  # On-device Apple Intelligence evaluation
-├── HeuristicEvaluator.swift        # Offline fallback evaluator
+├── HeuristicEvaluator.swift        # Rule-based evaluator — regex + keyword checks for all 5 stages
 ├── TreeScene.swift            # SpriteKit growing tree (visual progress)
 └── StoreManager.swift         # StoreKit 2 paywall (Education domain free)
 ```
@@ -54,7 +54,7 @@ SamvaadFlow.swiftpm
 
 - **One prompt, five transformations** — the same prompt is progressively refined through every stage
 - **5 domains** — Education (free), Healthcare, Legal, Finance, Support (unlockable)
-- **Dual evaluation engine** — Apple Foundation Models (on-device AI, iOS 26+) with heuristic fallback
+- **Per-stage inline evaluation** — each stage has its own rule-based checks that score the user's work on the spot
 - **Living tree visualisation** — SpriteKit tree grows and animates as you complete each stage
 - **Token efficiency tracking** — shows how a bad prompt costs 303 tokens vs. 136 for the optimised one
 - **Prompt Rain** — a SpriteKit arcade game to reinforce learning
@@ -69,7 +69,7 @@ SamvaadFlow.swiftpm
 | Platform | iOS / iPadOS **26.0+** |
 | Swift | **6.0** |
 | Xcode | **Swift Playgrounds 4 / Xcode 26** |
-| Apple Intelligence | Optional (falls back to offline heuristics) |
+| Apple Intelligence | Optional |
 
 ---
 
